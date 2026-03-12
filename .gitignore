@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads and generated files
+uploads/
+static/graph_images/*.png
+
+# Byte-compiled / distribution
+*.egg-info/
+dist/
+build/
+
+# Workspace settings
+*.code-workspace

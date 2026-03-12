@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados del Análisis DEA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .table-container { 
+            max-height: 500px; /* Altura máxima para las tablas */
+            overflow-y: auto; /* Scroll vertical si el contenido excede la altura */
+            margin-bottom: 1.5rem; /* Espacio debajo del contenedor de la tabla */
+        }
+        .results-table-wrapper {
+            /* Estilos para el contenedor de cada tabla individual */
+            @apply shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white;
+        }
+        
+        /* Contenedor de la barra de pestañas */
+        .tabs-nav-container {
+            @apply border-b border-gray-300;
+        }
+
+        /* Botones de Pestaña Individuales */
+        .tab-button {
+            @apply py-3 px-6 -mb-px mr-1; /* Ajuste de padding y margen para efecto de pestaña */
+            @apply border border-gray-300 border-b-0 rounded-t-lg; /* Bordes para efecto de pestaña */
+            @apply font-medium text-sm text-gray-600 bg-gray-100; /* Estilo base para pestañas no activas */
+            @apply focus:outline-none transition-colors duration-150 ease-in-out;
+        }
+        .tab-button:hover:not(.active) {
+            @apply bg-gray-200 text-gray-800; /* Efecto hover para pestañas no activas */
+        }
+        .tab-button.active {
+            @apply bg-white text-blue-600 border-gray-300 border-b-white; /* Estilo para la pestaña activa, el borde inferior se "fusiona" */
+            /* @apply shadow-sm; Podríamos añadir una sombra sutil si se desea */
+        }
+        
+        /* Contenido de la Pestaña */
+        .tab-content {
+            display: none; /* Oculto por defecto */
+            @apply p-5 bg-white border border-gray-300 rounded-b-lg rounded-tr-lg shadow-md; 
+            /* El rounded-tr-lg es para el caso en que la pestaña activa no sea la última */
+        }
+        .tab-content.active {
+            display: block; /* Visible cuando está activo */
+        }
+
+        /* Estilos para la barra de scroll (opcional, pero mejora la estética) */
+        .table-container::-webkit-scrollbar {
+            width: 8px; /* Ancho de la barra de scroll */
+            height: 8px; /* Altura para scroll horizontal (si lo hubiera) */
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1; /* Color del riel */
+            border-radius: 10px; /* Bordes redondeados para el riel */
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* Color del "pulgar" del scroll (gris claro) */
+            border-radius: 10px; /* Bordes redondeados para el pulgar */
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* Color del pulgar al pasar el mouse (gris más oscuro) */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center pt-6 pb-10 px-4 sm:px-0">
+    <div class="container bg-white shadow-2xl rounded-xl p-6 md:p-10 w-full max-w-6xl">
+        
+        <img src="{{ url_for('static', filename='logo.png') }}" 
+             alt="Logo de la empresa" 
+             class="logo img-fluid mb-4" 
+             style="max-width: 200px; margin-bottom: 2rem;"> 
+             
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
+            <h1 class="text-3xl font-bold text-blue-600 mb-3 sm:mb-0">Resultados del Análisis Frontera de Eficiencia</h1>
+            <div class="flex space-x-2 flex-wrap">
+                <a href="{{ url_for('configure_analysis') }}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out shadow-md hover:shadow-lg mb-2 sm:mb-0">
+                    Modificar Configuración
+                </a>
+                <a href="{{ url_for('clear_session_route') }}" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out shadow-md hover:shadow-lg mb-2 sm:mb-0">
+                    Nuevo Análisis
+                </a>
+            </div>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="p-4 mb-4 text-sm rounded-lg shadow-sm
+                    {% if category == 'error' %} bg-red-100 text-red-700 border border-red-300
+                    {% elif category == 'success' %} bg-green-100 text-green-700 border border-green-300
+                    {% else %} bg-blue-100 text-blue-700 border border-blue-300 {% endif %}" role="alert">
+                    <span class="font-medium">{{ category|capitalize }}:</span> {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if results and analysis_config %}
+        <div class="mb-8 p-5 bg-blue-50 border border-blue-200 rounded-lg shadow">
+            <h2 class="text-xl font-semibold text-blue-700 mb-3">Resumen de la Configuración del Análisis</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <p><strong>Archivo:</strong> <span class="font-normal text-gray-700">{{ analysis_config.filename }}</span></p>
+                <p><strong>Columna DMU:</strong> <span class="font-normal text-gray-700">{{ analysis_config.dmu_column }}</span></p>
+                <p><strong>Orientación:</strong> <span class="font-normal text-gray-700">{{ analysis_config.orientation | capitalize }}-orientado</span></p>
+                <p><strong>Modelo Elegido:</strong> <span class="font-normal text-gray-700">{{ analysis_config.chosen_model }} (automático)</span></p>
+                <p><strong>Normalización:</strong> <span class="font-normal text-gray-700">{% if analysis_config.normalize %}Sí{% else %}No{% endif %}</span></p>
+                <p class="md:col-span-2"><strong>Inputs:</strong> <span class="font-normal text-gray-700">{{ analysis_config.input_columns | join(', ') }}</span></p>
+                <p class="md:col-span-2"><strong>Outputs:</strong> <span class="font-normal text-gray-700">{{ analysis_config.output_columns | join(', ') }}</span></p>
+                {% if analysis_config.undesirable_outputs %}
+                <p class="md:col-span-2"><strong>Outputs No Deseables (original):</strong> <span class="font-normal text-gray-700">{{ analysis_config.undesirable_outputs | join(', ') }}</span></p>
+                {% endif %}
+            </div>
+            <p class="mt-3 text-gray-700 text-sm">{{ results.summary }}</p>
+        </div>
+
+        <div class="mb-6">
+            <div class="tabs-nav-container">
+                <nav class="flex flex-wrap" aria-label="Tabs">
+                    <button class="tab-button active" onclick="openTab(event, 'scores')">
+                        <font color="blue"><b>Puntajes</b>  -   
+                    </button>
+                    <button class="tab-button" onclick="openTab(event, 'slacks')">
+                        <font color="blue"><b>Holguras</b>  -  
+                    </button>
+                    <button class="tab-button" onclick="openTab(event, 'targets')">
+                        <font color="blue"><b>Objetivos</b>  -  
+                    </button>
+                    <button class="tab-button" onclick="openTab(event, 'lambdas')">
+                        <font color="blue"><b>Lambdas</b>  -  
+                    </button>
+                    <button class="tab-button" onclick="openTab(event, 'original_inputs')">
+                        <font color="blue"><b>Datos Entrada</b>  -  
+                    </button>
+                    <button class="tab-button" onclick="openTab(event, 'original_outputs')">
+                        <font color="blue"><b>Datos Salida</b>  -  
+                    </button>
+                        <font color="black">
+                </nav>
+            </div>
+        <br><br>
+            <div id="scores" class="tab-content active">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Puntajes de Eficiencia</h3>
+                <p class="text-xs text-gray-600 mb-3">Un puntaje de 1 indica una DMU eficiente. Menor a 1 indica ineficiencia.</p>
+                <div class="results-table-wrapper">
+                    <div class="table-container custom-scrollbar">
+                        {{ results.scores_html | safe }}
+                    </div>
+                </div>
+            </div>
+            <div id="slacks" class="tab-content">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Holguras (Slacks)</h3>
+                 <p class="text-xs text-gray-600 mb-3">Excesos de inputs o déficits de outputs para DMUs ineficientes.</p>
+                <div class="results-table-wrapper">
+                    <div class="table-container custom-scrollbar">
+                        {{ results.slacks_html | safe }}
+                    </div>
+                </div>
+            </div>
+            <div id="targets" class="tab-content">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Objetivos (Targets)</h3>
+                <p class="text-xs text-gray-600 mb-3">Niveles de inputs/outputs para que una DMU ineficiente alcance la frontera.</p>
+                <div class="results-table-wrapper">
+                    <div class="table-container custom-scrollbar">
+                        {{ results.targets_html | safe }}
+                    </div>
+                </div>
+            </div>
+            <div id="lambdas" class="tab-content">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Lambdas (Pesos de Peers)</h3>
+                <p class="text-xs text-gray-600 mb-3">Pesos de las DMUs eficientes (peers) en la proyección de las DMUs ineficientes.</p>
+                <div class="results-table-wrapper">
+                    <div class="table-container custom-scrollbar">
+                        {{ results.lambdas_html | safe }}
+                    </div>
+                </div>
+            </div>
+            <div id="original_inputs" class="tab-content">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Datos de Entrada Originales</h3>
+                <p class="text-xs text-gray-600 mb-3">Valores de las variables de entrada seleccionadas para las DMUs analizadas.</p>
+                <div class="results-table-wrapper">
+                    <div class="table-container custom-scrollbar">
+                        {{ results.original_inputs_html | safe }}
+                    </div>
+                </div>
+            </div>
+            <div id="original_outputs" class="tab-content">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Datos de Salida Originales</h3>
+                <p class="text-xs text-gray-600 mb-3">Valores de las variables de salida seleccionadas para las DMUs analizadas.</p>
+                <div class="results-table-wrapper">
+                    <div class="table-container custom-scrollbar">
+                        {{ results.original_outputs_html | safe }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <a href="{{ url_for('download_report') }}" class="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg">
+                Descargar Reporte en PDF
+            </a>
+            <a href="{{ url_for('show_graphs') }}" class="inline-block bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-6 rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg">
+                Gráficas de Frontera
+            </a>
+        </div>
+        {% else %}
+            <p class="text-center text-gray-600 py-10">No hay resultados para mostrar. Por favor, <a href="{{ url_for('index') }}" class="text-blue-600 hover:underline">realice un análisis</a> primero.</p>
+        {% endif %}
+    </div>
+
+    <footer class="text-center text-sm text-gray-500 mt-8">
+        CHAMPIONSYS &copy; {{ current_year }}
+    </footer>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+        // Lógica para asegurar que la primera pestaña esté activa al cargar
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            // Si hay pestañas y ninguna está activa, activa la primera.
+            if (tabButtons.length > 0 && !document.querySelector('.tab-button.active')) {
+                tabButtons[0].classList.add('active');
+                if (tabContents.length > 0) {
+                    // Intenta obtener el nombre de la pestaña del primer botón
+                    try {
+                        const firstTabName = tabButtons[0].getAttribute('onclick').match(/'([^']+)'/)[1];
+                        if (document.getElementById(firstTabName)) {
+                            document.getElementById(firstTabName).classList.add('active');
+                        } else if (tabContents.length > 0) { 
+                            // Fallback si el parseo del onclick falla, activa el primer contenido
+                            tabContents[0].classList.add('active');
+                        }
+                    } catch (e) {
+                        // Fallback si el parseo del onclick falla
+                         if (tabContents.length > 0) {
+                            tabContents[0].classList.add('active');
+                        }
+                        console.warn("Could not determine first tab name from onclick, defaulting to first tab content if available.");
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
