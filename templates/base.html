@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DEA ChampionSys{% endblock %}</title>
+    
+    <!-- Tailwind v4 standalone (CSS generado) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/tailwind.css') }}">
+    
+    <!-- Plotly 4.0.0 (CDN versionado) -->
+    <script src="https://cdn.plot.ly/plotly-4.0.0.min.js"></script>
+    
+    <!-- Google Fonts: Inter + Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-[var(--color-bg-gradient-start)] to-[var(--color-bg-gradient-end)] text-[var(--color-text)] min-h-screen flex flex-col">
+    
+    <!-- Navbar glass sticky -->
+    <nav class="sticky top-0 z-50 backdrop-glass px-6 py-3 shadow-glass">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <a href="{{ url_for('index') }}" class="flex items-center space-x-3">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="h-8 w-auto">
+            </a>
+            <div class="flex items-center space-x-3">
+                {% if session.get('filepath') %}
+                <a href="{{ url_for('show_results') }}" class="text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">Resultados</a>
+                <a href="{{ url_for('show_graphs') }}" class="text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">Gráficas</a>
+                <a href="{{ url_for('clear_session_route') }}" class="btn-danger text-sm">Nuevo Análisis</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="max-w-7xl mx-auto px-6 mt-4">
+            {% for category, message in messages %}
+            <div class="flash-glass flash-{{ category }} flex items-center justify-between mb-2 px-4 py-3 rounded-xl" role="alert">
+                <div class="flex items-center space-x-2">
+                    {% if category == 'error' %}
+                    <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                    {% elif category == 'success' %}
+                    <svg class="w-5 h-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                    {% else %}
+                    <svg class="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                    {% endif %}
+                    <span class="text-sm font-medium">{{ message }}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main content -->
+    <main class="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center text-sm text-zinc-400 py-6">
+        CHAMPIONSYS &copy; {{ current_year }}
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

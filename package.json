@@ -1,0 +1,12 @@
+{
+  "name": "dea-championsys",
+  "private": true,
+  "scripts": {
+    "build": "npx @tailwindcss/cli -i static/css/input.css -o static/dist/tailwind.css --minify",
+    "dev": "npx @tailwindcss/cli -i static/css/input.css -o static/dist/tailwind.css --watch"
+  },
+  "dependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

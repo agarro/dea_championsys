@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
-from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash, jsonify
 from werkzeug.utils import secure_filename
 import io
 import logging
@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dea-championsys-stable-key-2024')
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['GRAPH_IMAGE_FOLDER'] = os.path.join('static', 'graph_images') 
 app.config['ALLOWED_EXTENSIONS'] = {'csv', 'xlsx', 'xls'}
@@ -235,6 +235,25 @@ def analyze():
         
         session['dea_results_raw'] = dea_results_for_session_raw
         logger.info(f"Análisis DEA completado. Modelo: {chosen_model}. Resultados (raw JSON) almacenados en sesión.")
+
+        # --- ML Analysis (F4: M1 Dimensionalidad + M2 SHAP) ---
+        try:
+            from ml_analysis import audit_variable_importance, audit_dimensionality
+            efficiency_scores = results_data['scores']['Score'].tolist()
+            importance_result = audit_variable_importance(
+                df_analysis, input_columns, output_columns, efficiency_scores
+            )
+            # Convert DataFrame to JSON-serializable format for session storage
+            importance_result['importance_df'] = importance_result['importance_df'].to_dict(orient='records')
+            ml_results = {
+                'dimensionality': audit_dimensionality(df_analysis, input_columns, output_columns),
+                'importance': importance_result,
+            }
+            session['ml_results'] = ml_results
+            logger.info("Análisis ML (dimensionalidad + SHAP) completado.")
+        except Exception as e:
+            logger.error(f"Error en análisis ML: {e}", exc_info=True)
+            session['ml_results'] = {'error': str(e)}
         
         session.pop('error_message', None) 
         flash(f"Análisis DEA completado con éxito usando el modelo {chosen_model}.", 'success')
@@ -290,7 +309,8 @@ def show_results():
 
     return render_template('results.html', 
                            results=results_for_html, 
-                           analysis_config=analysis_cfg)
+                           analysis_config=analysis_cfg,
+                           ml_results=session.get('ml_results', {}))
 
 @app.route('/graphs', methods=['GET', 'POST'])
 def show_graphs():
@@ -360,9 +380,13 @@ def show_graphs():
                 
                 graph_filename = f"graph_{session.get('filename', 'data').split('.')[0]}_{selected_input}_{selected_output_col_original_name}.png"
                 graph_image_path = os.path.join(app.config['GRAPH_IMAGE_FOLDER'], secure_filename(graph_filename))
-                pio.write_image(fig, graph_image_path, width=800, height=600, scale=1.5) 
-                session['current_graph_image_path'] = graph_image_path
-                logger.info(f"Gráfica generada y guardada en: {graph_image_path}")
+                try:
+                    pio.write_image(fig, graph_image_path, width=800, height=600, scale=1.5)
+                    session['current_graph_image_path'] = graph_image_path
+                    logger.info(f"Gráfica generada y guardada en: {graph_image_path}")
+                except Exception as img_err:
+                    logger.warning(f"Kaleido no disponible, imagen estática no generada: {img_err}")
+                    session['current_graph_image_path'] = None
 
                 current_graph_cfg = {'input': selected_input, 'output': selected_output_col_original_name}
                 session['current_graph_config'] = current_graph_cfg 
@@ -388,6 +412,212 @@ def show_graphs():
                            graph_html=graph_html_output,
                            selected_input=current_graph_cfg.get('input'),
                            selected_output=current_graph_cfg.get('output'))
+
+
+# ===== F5: Simulador What-If =====
+
+@app.route('/simulator')
+def simulator():
+    """Simulador What-If page."""
+    if 'dea_results_raw' not in session:
+        flash('Primero realiza un análisis DEA.', 'warning')
+        return redirect(url_for('index'))
+
+    raw_results = session['dea_results_raw']
+    config = session.get('analysis_config', {})
+
+    dmu_name = request.args.get('dmu', '')
+    if not dmu_name:
+        dmu_name = session.get('selected_dmu', '')
+
+    # Load DataFrames
+    try:
+        scores_df = pd.read_json(raw_results['raw_scores_df_json'], orient='split')
+        inputs_df = pd.read_json(raw_results['raw_original_inputs_df_json'], orient='split')
+        outputs_df = pd.read_json(raw_results['raw_original_outputs_df_json'], orient='split')
+    except Exception as e:
+        logger.error(f"Error loading data for simulator: {e}", exc_info=True)
+        flash("Error al cargar datos para el simulador.", "error")
+        return redirect(url_for('show_results'))
+
+    # Default to first DMU if none specified
+    if not dmu_name or dmu_name not in scores_df.index:
+        dmu_name = scores_df.index[0] if len(scores_df) > 0 else ''
+
+    input_cols = config.get('input_columns', [])
+    output_cols = config.get('output_columns', [])
+    orientation = config.get('orientation', 'input')
+
+    # Build variable info with min/max/current for sliders
+    input_variables = []
+    for col in input_cols:
+        if col in inputs_df.columns:
+            vals = inputs_df[col].dropna()
+            if len(vals) > 0:
+                min_val = float(vals.min())
+                max_val = float(vals.max())
+                current_val = float(inputs_df.loc[dmu_name, col]) if dmu_name in inputs_df.index else float(vals.mean())
+                step_val = max((max_val - min_val) / 200, 0.0001)
+                input_variables.append({
+                    'name': col,
+                    'min': round(min_val * 0.5, 4),
+                    'max': round(max_val * 1.5, 4),
+                    'current': round(current_val, 4),
+                    'step': round(step_val, 6),
+                })
+
+    output_variables = []
+    for col in output_cols:
+        if col in outputs_df.columns:
+            vals = outputs_df[col].dropna()
+            if len(vals) > 0:
+                min_val = float(vals.min())
+                max_val = float(vals.max())
+                current_val = float(outputs_df.loc[dmu_name, col]) if dmu_name in outputs_df.index else float(vals.mean())
+                step_val = max((max_val - min_val) / 200, 0.0001)
+                output_variables.append({
+                    'name': col,
+                    'min': round(min_val * 0.5, 4),
+                    'max': round(max_val * 1.5, 4),
+                    'current': round(current_val, 4),
+                    'step': round(step_val, 6),
+                })
+
+    current_score = 0.0
+    if dmu_name in scores_df.index:
+        current_score = float(scores_df.loc[dmu_name, 'Score'])
+
+    # Get peer group from lambdas
+    peer_group = []
+    try:
+        lambdas_df = pd.read_json(raw_results['raw_lambdas_df_json'], orient='split')
+        if dmu_name in lambdas_df.index:
+            row = lambdas_df.loc[dmu_name]
+            peer_group = row[row > 1e-6].index.tolist()
+            peer_group = [p for p in peer_group if p != dmu_name][:10]
+    except Exception:
+        pass
+
+    return render_template('simulator.html',
+                           dmu_name=dmu_name,
+                           current_score=current_score,
+                           input_variables=input_variables,
+                           output_variables=output_variables,
+                           orientation=orientation,
+                           peer_group=peer_group)
+
+
+@app.route('/api/simulate-what-if', methods=['POST'])
+def api_simulate():
+    """API endpoint for What-If simulation."""
+    raw_results = session.get('dea_results_raw')
+    config = session.get('analysis_config')
+
+    if not raw_results or not config:
+        return jsonify({'feasible': False, 'violations': ['No hay datos de análisis en sesión.']}), 400
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'feasible': False, 'violations': ['Request body inválido.']}), 400
+
+    targets = data.get('targets', {})
+    if not targets:
+        return jsonify({'feasible': False, 'violations': ['No se proporcionaron metas de ajuste.']}), 400
+
+    dmu_name = data.get('dmu', session.get('selected_dmu', ''))
+    input_cols = config.get('input_columns', [])
+    output_cols = config.get('output_columns', [])
+    orientation = config.get('orientation', 'input')
+    undesirable_outputs = config.get('undesirable_outputs', [])
+    normalize = config.get('normalize', False)
+
+    try:
+        # Load full dataframe
+        filepath = session.get('filepath')
+        if not filepath:
+            return jsonify({'feasible': False, 'violations': ['No se encontró el archivo de datos.']}), 400
+
+        if filepath.endswith('.csv'):
+            df_full = pd.read_csv(filepath)
+        else:
+            df_full = pd.read_excel(filepath)
+
+        dmu_col = config.get('dmu_column', '')
+        if dmu_col and dmu_col in df_full.columns:
+            df_full.set_index(dmu_col, inplace=True)
+
+        # Default DMU to first if not specified
+        if not dmu_name or dmu_name not in df_full.index:
+            dmu_name = df_full.index[0] if len(df_full) > 0 else ''
+
+        from simulation_engine import simulate_what_if
+        result = simulate_what_if(
+            df_full, dmu_name, input_cols, output_cols,
+            targets, orientation, undesirable_outputs, normalize
+        )
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error in simulation: {e}", exc_info=True)
+        return jsonify({'feasible': False, 'violations': [f'Error interno: {str(e)}']}), 500
+
+
+@app.route('/api/diagnosis', methods=['POST'])
+def api_diagnosis():
+    """API endpoint para generar diagnóstico LLM de una DMU."""
+    from ai_insights import generate_dmu_diagnosis
+
+    data = request.get_json(force=True)
+    dmu_index = data.get("dmu_index")
+
+    if "dea_results_raw" not in session:
+        return jsonify({"error": "No hay resultados de análisis disponibles"}), 400
+
+    try:
+        results = session["dea_results_raw"]
+        config = session.get("analysis_config", {})
+        input_cols = config.get("input_columns", [])
+        output_cols = config.get("output_columns", [])
+        orientation = config.get("orientation", "output")
+
+        scores_df = pd.read_json(results['raw_scores_df_json'], orient='split')
+        slacks_df = pd.read_json(results['raw_slacks_df_json'], orient='split')
+
+        if dmu_index is None or dmu_index < 0 or dmu_index >= len(scores_df):
+            return jsonify({"error": "Índice de DMU inválido"}), 400
+
+        score_row = scores_df.iloc[dmu_index]
+        dmu_name = str(score_row.iloc[0]) if len(score_row) > 0 else f"DMU {dmu_index}"
+        score = float(score_row.iloc[-1]) if len(score_row) > 0 else 0.0
+
+        slacks_dict = {}
+        if dmu_index < len(slacks_df):
+            slack_row = slacks_df.iloc[dmu_index]
+            for col in slack_row.index:
+                if col != slacks_df.columns[0]:
+                    try:
+                        slacks_dict[str(col)] = float(slack_row[col])
+                    except (ValueError, TypeError):
+                        slacks_dict[str(col)] = 0.0
+
+        dmu_data = {"name": dmu_name, "_dmu_name": dmu_name}
+
+        diagnosis = generate_dmu_diagnosis(
+            dmu_row=dmu_data,
+            peers=[],
+            slacks=slacks_dict,
+            input_cols=input_cols,
+            output_cols=output_cols,
+            score=score,
+            orientation=orientation,
+            provider=data.get("provider", "auto"),
+        )
+
+        return jsonify(diagnosis)
+
+    except Exception as e:
+        logger.error(f"Error generating diagnosis: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/download_report')
@@ -446,6 +676,7 @@ def clear_session_route():
         'filepath', 'filename', 'columns', 'potential_dmu_cols', 'numeric_columns',
         'analysis_config', 'dea_results_raw', 'error_message', 
         'current_graph_html', 'current_graph_config', 'current_graph_image_path',
+        'ml_results', 'selected_dmu',
     ]
     for key in keys_to_clear:
         session.pop(key, None)

@@ -1,262 +1,509 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultados del Análisis DEA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .table-container { 
-            max-height: 500px; /* Altura máxima para las tablas */
-            overflow-y: auto; /* Scroll vertical si el contenido excede la altura */
-            margin-bottom: 1.5rem; /* Espacio debajo del contenedor de la tabla */
-        }
-        .results-table-wrapper {
-            /* Estilos para el contenedor de cada tabla individual */
-            @apply shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white;
-        }
-        
-        /* Contenedor de la barra de pestañas */
-        .tabs-nav-container {
-            @apply border-b border-gray-300;
-        }
+{% extends "base.html" %}
 
-        /* Botones de Pestaña Individuales */
-        .tab-button {
-            @apply py-3 px-6 -mb-px mr-1; /* Ajuste de padding y margen para efecto de pestaña */
-            @apply border border-gray-300 border-b-0 rounded-t-lg; /* Bordes para efecto de pestaña */
-            @apply font-medium text-sm text-gray-600 bg-gray-100; /* Estilo base para pestañas no activas */
-            @apply focus:outline-none transition-colors duration-150 ease-in-out;
-        }
-        .tab-button:hover:not(.active) {
-            @apply bg-gray-200 text-gray-800; /* Efecto hover para pestañas no activas */
-        }
-        .tab-button.active {
-            @apply bg-white text-blue-600 border-gray-300 border-b-white; /* Estilo para la pestaña activa, el borde inferior se "fusiona" */
-            /* @apply shadow-sm; Podríamos añadir una sombra sutil si se desea */
-        }
-        
-        /* Contenido de la Pestaña */
-        .tab-content {
-            display: none; /* Oculto por defecto */
-            @apply p-5 bg-white border border-gray-300 rounded-b-lg rounded-tr-lg shadow-md; 
-            /* El rounded-tr-lg es para el caso en que la pestaña activa no sea la última */
-        }
-        .tab-content.active {
-            display: block; /* Visible cuando está activo */
-        }
+{% block title %}DEA ChampionSys — Resultados{% endblock %}
 
-        /* Estilos para la barra de scroll (opcional, pero mejora la estética) */
-        .table-container::-webkit-scrollbar {
-            width: 8px; /* Ancho de la barra de scroll */
-            height: 8px; /* Altura para scroll horizontal (si lo hubiera) */
-        }
-        .table-container::-webkit-scrollbar-track {
-            background: #f1f1f1; /* Color del riel */
-            border-radius: 10px; /* Bordes redondeados para el riel */
-        }
-        .table-container::-webkit-scrollbar-thumb {
-            background: #cbd5e1; /* Color del "pulgar" del scroll (gris claro) */
-            border-radius: 10px; /* Bordes redondeados para el pulgar */
-        }
-        .table-container::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; /* Color del pulgar al pasar el mouse (gris más oscuro) */
-        }
-    </style>
-</head>
-<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center pt-6 pb-10 px-4 sm:px-0">
-    <div class="container bg-white shadow-2xl rounded-xl p-6 md:p-10 w-full max-w-6xl">
-        
-        <img src="{{ url_for('static', filename='logo.png') }}" 
-             alt="Logo de la empresa" 
-             class="logo img-fluid mb-4" 
-             style="max-width: 200px; margin-bottom: 2rem;"> 
-             
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
-            <h1 class="text-3xl font-bold text-blue-600 mb-3 sm:mb-0">Resultados del Análisis Frontera de Eficiencia</h1>
-            <div class="flex space-x-2 flex-wrap">
-                <a href="{{ url_for('configure_analysis') }}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out shadow-md hover:shadow-lg mb-2 sm:mb-0">
-                    Modificar Configuración
-                </a>
-                <a href="{{ url_for('clear_session_route') }}" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out shadow-md hover:shadow-lg mb-2 sm:mb-0">
-                    Nuevo Análisis
-                </a>
-            </div>
+{% block content %}
+{% if results and analysis_config %}
+<!-- Hero KPI Bento -->
+<div class="hero-bento mb-8">
+    <div class="card-kpi animate-fade-in">
+        <div class="kpi-label">Total DMUs</div>
+        <div class="kpi-value">{{ analysis_config.dmu_column }}</div>
+    </div>
+    <div class="card-kpi animate-fade-in">
+        <div class="kpi-label">Modelo</div>
+        <div class="kpi-value text-lg">{{ analysis_config.chosen_model }}</div>
+    </div>
+    <div class="card-kpi animate-fade-in">
+        <div class="kpi-label">Orientación</div>
+        <div class="kpi-value text-lg">{{ analysis_config.orientation | capitalize }}</div>
+    </div>
+    <div class="card-kpi animate-fade-in">
+        <div class="kpi-label">Normalización</div>
+        <div class="kpi-value text-lg">{% if analysis_config.normalize %}Sí{% else %}No{% endif %}</div>
+    </div>
+</div>
+
+<!-- Header + Action Buttons -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+    <div>
+        <h1 class="font-display text-2xl md:text-3xl font-bold text-[var(--color-text)] mb-1">Resultados del Análisis</h1>
+        <p class="text-sm text-[var(--color-text-secondary)]">Archivo: {{ analysis_config.filename }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2 mt-3 sm:mt-0">
+        <a href="{{ url_for('configure_analysis') }}" class="btn-secondary text-sm">Modificar Configuración</a>
+        <a id="simulator-link" href="{{ url_for('simulator') }}" class="btn-primary text-sm">Simular What-If</a>
+        <a href="{{ url_for('download_report') }}" class="btn-primary text-sm">Descargar PDF</a>
+        <a href="{{ url_for('show_graphs') }}" class="btn-primary text-sm" style="background: var(--color-secondary);">Ver Gráficas</a>
+        <a href="{{ url_for('clear_session_route') }}" class="btn-danger text-sm">Nuevo Análisis</a>
+    </div>
+</div>
+
+<!-- Resumen de Configuración -->
+<div class="card-glass p-6 mb-8 animate-fade-in">
+    <h2 class="font-display text-lg font-semibold text-[var(--color-text)] mb-4">Resumen de Configuración</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div class="flex items-start space-x-2">
+            <span class="font-medium text-[var(--color-text-secondary)] min-w-[120px]">Archivo:</span>
+            <span class="text-[var(--color-text)]">{{ analysis_config.filename }}</span>
         </div>
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                <div class="p-4 mb-4 text-sm rounded-lg shadow-sm
-                    {% if category == 'error' %} bg-red-100 text-red-700 border border-red-300
-                    {% elif category == 'success' %} bg-green-100 text-green-700 border border-green-300
-                    {% else %} bg-blue-100 text-blue-700 border border-blue-300 {% endif %}" role="alert">
-                    <span class="font-medium">{{ category|capitalize }}:</span> {{ message }}
-                </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% if results and analysis_config %}
-        <div class="mb-8 p-5 bg-blue-50 border border-blue-200 rounded-lg shadow">
-            <h2 class="text-xl font-semibold text-blue-700 mb-3">Resumen de la Configuración del Análisis</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                <p><strong>Archivo:</strong> <span class="font-normal text-gray-700">{{ analysis_config.filename }}</span></p>
-                <p><strong>Columna DMU:</strong> <span class="font-normal text-gray-700">{{ analysis_config.dmu_column }}</span></p>
-                <p><strong>Orientación:</strong> <span class="font-normal text-gray-700">{{ analysis_config.orientation | capitalize }}-orientado</span></p>
-                <p><strong>Modelo Elegido:</strong> <span class="font-normal text-gray-700">{{ analysis_config.chosen_model }} (automático)</span></p>
-                <p><strong>Normalización:</strong> <span class="font-normal text-gray-700">{% if analysis_config.normalize %}Sí{% else %}No{% endif %}</span></p>
-                <p class="md:col-span-2"><strong>Inputs:</strong> <span class="font-normal text-gray-700">{{ analysis_config.input_columns | join(', ') }}</span></p>
-                <p class="md:col-span-2"><strong>Outputs:</strong> <span class="font-normal text-gray-700">{{ analysis_config.output_columns | join(', ') }}</span></p>
-                {% if analysis_config.undesirable_outputs %}
-                <p class="md:col-span-2"><strong>Outputs No Deseables (original):</strong> <span class="font-normal text-gray-700">{{ analysis_config.undesirable_outputs | join(', ') }}</span></p>
-                {% endif %}
-            </div>
-            <p class="mt-3 text-gray-700 text-sm">{{ results.summary }}</p>
+        <div class="flex items-start space-x-2">
+            <span class="font-medium text-[var(--color-text-secondary)] min-w-[120px]">DMU:</span>
+            <span class="text-[var(--color-text)]">{{ analysis_config.dmu_column }}</span>
         </div>
-
-        <div class="mb-6">
-            <div class="tabs-nav-container">
-                <nav class="flex flex-wrap" aria-label="Tabs">
-                    <button class="tab-button active" onclick="openTab(event, 'scores')">
-                        <font color="blue"><b>Puntajes</b>  -   
-                    </button>
-                    <button class="tab-button" onclick="openTab(event, 'slacks')">
-                        <font color="blue"><b>Holguras</b>  -  
-                    </button>
-                    <button class="tab-button" onclick="openTab(event, 'targets')">
-                        <font color="blue"><b>Objetivos</b>  -  
-                    </button>
-                    <button class="tab-button" onclick="openTab(event, 'lambdas')">
-                        <font color="blue"><b>Lambdas</b>  -  
-                    </button>
-                    <button class="tab-button" onclick="openTab(event, 'original_inputs')">
-                        <font color="blue"><b>Datos Entrada</b>  -  
-                    </button>
-                    <button class="tab-button" onclick="openTab(event, 'original_outputs')">
-                        <font color="blue"><b>Datos Salida</b>  -  
-                    </button>
-                        <font color="black">
-                </nav>
-            </div>
-        <br><br>
-            <div id="scores" class="tab-content active">
-                <h3 class="text-lg font-semibold text-gray-700 mb-3">Puntajes de Eficiencia</h3>
-                <p class="text-xs text-gray-600 mb-3">Un puntaje de 1 indica una DMU eficiente. Menor a 1 indica ineficiencia.</p>
-                <div class="results-table-wrapper">
-                    <div class="table-container custom-scrollbar">
-                        {{ results.scores_html | safe }}
-                    </div>
-                </div>
-            </div>
-            <div id="slacks" class="tab-content">
-                <h3 class="text-lg font-semibold text-gray-700 mb-3">Holguras (Slacks)</h3>
-                 <p class="text-xs text-gray-600 mb-3">Excesos de inputs o déficits de outputs para DMUs ineficientes.</p>
-                <div class="results-table-wrapper">
-                    <div class="table-container custom-scrollbar">
-                        {{ results.slacks_html | safe }}
-                    </div>
-                </div>
-            </div>
-            <div id="targets" class="tab-content">
-                <h3 class="text-lg font-semibold text-gray-700 mb-3">Objetivos (Targets)</h3>
-                <p class="text-xs text-gray-600 mb-3">Niveles de inputs/outputs para que una DMU ineficiente alcance la frontera.</p>
-                <div class="results-table-wrapper">
-                    <div class="table-container custom-scrollbar">
-                        {{ results.targets_html | safe }}
-                    </div>
-                </div>
-            </div>
-            <div id="lambdas" class="tab-content">
-                <h3 class="text-lg font-semibold text-gray-700 mb-3">Lambdas (Pesos de Peers)</h3>
-                <p class="text-xs text-gray-600 mb-3">Pesos de las DMUs eficientes (peers) en la proyección de las DMUs ineficientes.</p>
-                <div class="results-table-wrapper">
-                    <div class="table-container custom-scrollbar">
-                        {{ results.lambdas_html | safe }}
-                    </div>
-                </div>
-            </div>
-            <div id="original_inputs" class="tab-content">
-                <h3 class="text-lg font-semibold text-gray-700 mb-3">Datos de Entrada Originales</h3>
-                <p class="text-xs text-gray-600 mb-3">Valores de las variables de entrada seleccionadas para las DMUs analizadas.</p>
-                <div class="results-table-wrapper">
-                    <div class="table-container custom-scrollbar">
-                        {{ results.original_inputs_html | safe }}
-                    </div>
-                </div>
-            </div>
-            <div id="original_outputs" class="tab-content">
-                <h3 class="text-lg font-semibold text-gray-700 mb-3">Datos de Salida Originales</h3>
-                <p class="text-xs text-gray-600 mb-3">Valores de las variables de salida seleccionadas para las DMUs analizadas.</p>
-                <div class="results-table-wrapper">
-                    <div class="table-container custom-scrollbar">
-                        {{ results.original_outputs_html | safe }}
-                    </div>
-                </div>
-            </div>
+        <div class="flex items-start space-x-2">
+            <span class="font-medium text-[var(--color-text-secondary)] min-w-[120px]">Inputs:</span>
+            <span class="text-[var(--color-text)]">{{ analysis_config.input_columns | join(', ') }}</span>
         </div>
-
-        <div class="mt-8 text-center space-y-3 sm:space-y-0 sm:space-x-4">
-            <a href="{{ url_for('download_report') }}" class="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg">
-                Descargar Reporte en PDF
-            </a>
-            <a href="{{ url_for('show_graphs') }}" class="inline-block bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-6 rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg">
-                Gráficas de Frontera
-            </a>
+        <div class="flex items-start space-x-2">
+            <span class="font-medium text-[var(--color-text-secondary)] min-w-[120px]">Outputs:</span>
+            <span class="text-[var(--color-text)]">{{ analysis_config.output_columns | join(', ') }}</span>
         </div>
-        {% else %}
-            <p class="text-center text-gray-600 py-10">No hay resultados para mostrar. Por favor, <a href="{{ url_for('index') }}" class="text-blue-600 hover:underline">realice un análisis</a> primero.</p>
+        {% if analysis_config.undesirable_outputs %}
+        <div class="md:col-span-2 flex items-start space-x-2">
+            <span class="font-medium text-[var(--color-text-secondary)] min-w-[120px]">No deseables:</span>
+            <span class="text-[var(--color-text)]">{{ analysis_config.undesirable_outputs | join(', ') }}</span>
+        </div>
         {% endif %}
     </div>
+    <p class="mt-4 text-sm text-[var(--color-text-secondary)] border-t border-[var(--color-surface-border)] pt-4">{{ results.summary }}</p>
+</div>
 
-    <footer class="text-center text-sm text-gray-500 mt-8">
-        CHAMPIONSYS &copy; {{ current_year }}
-    </footer>
+<!-- Tabs -->
+<div class="card-glass overflow-hidden animate-fade-in">
+    <!-- Tab Navigation -->
+    <div class="border-b border-[var(--color-surface-border)] px-4 pt-4">
+        <nav class="flex flex-wrap gap-1" aria-label="Tabs">
+            <button class="tab-button active" onclick="openTab(event, 'scores')">Puntajes</button>
+            <button class="tab-button" onclick="openTab(event, 'slacks')">Holguras</button>
+            <button class="tab-button" onclick="openTab(event, 'targets')">Objetivos</button>
+            <button class="tab-button" onclick="openTab(event, 'lambdas')">Lambdas</button>
+            <button class="tab-button" onclick="openTab(event, 'original_inputs')">Datos Entrada</button>
+            <button class="tab-button" onclick="openTab(event, 'original_outputs')">Datos Salida</button>
+            {% if ml_results and not ml_results.get('error') %}
+            <button class="tab-button" onclick="openTab(event, 'dimensionality')">Dimensionalidad</button>
+            <button class="tab-button" onclick="openTab(event, 'importance')">Importancia SHAP</button>
+            {% endif %}
+            <button class="tab-button" onclick="openTab(event, 'diagnosis')">Diagnóstico IA</button>
+        </nav>
+    </div>
 
-    <script>
-        function openTab(evt, tabName) {
-            var i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].classList.remove("active");
-            }
-            tablinks = document.getElementsByClassName("tab-button");
-            for (i = 0; i < tablinks.length; i++) {
-                tablinks[i].classList.remove("active");
-            }
-            document.getElementById(tabName).classList.add("active");
-            evt.currentTarget.classList.add("active");
+    <!-- Tab Contents -->
+    <div id="scores" class="tab-content active">
+        <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-2">Puntajes de Eficiencia</h3>
+        <p class="text-xs text-[var(--color-text-muted)] mb-4">Un puntaje de 1 indica una DMU eficiente. Menor a 1 indica ineficiencia.</p>
+        <div class="table-container">
+            {{ results.scores_html | safe }}
+        </div>
+    </div>
+
+    <div id="slacks" class="tab-content">
+        <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-2">Holguras (Slacks)</h3>
+        <p class="text-xs text-[var(--color-text-muted)] mb-4">Excesos de inputs o déficits de outputs para DMUs ineficientes.</p>
+        <div class="table-container">
+            {{ results.slacks_html | safe }}
+        </div>
+    </div>
+
+    <div id="targets" class="tab-content">
+        <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-2">Objetivos (Targets)</h3>
+        <p class="text-xs text-[var(--color-text-muted)] mb-4">Niveles de inputs/outputs para que una DMU ineficiente alcance la frontera.</p>
+        <div class="table-container">
+            {{ results.targets_html | safe }}
+        </div>
+    </div>
+
+    <div id="lambdas" class="tab-content">
+        <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-2">Lambdas (Pesos de Peers)</h3>
+        <p class="text-xs text-[var(--color-text-muted)] mb-4">Pesos de las DMUs eficientes (peers) en la proyección de las DMUs ineficientes.</p>
+        <div class="table-container">
+            {{ results.lambdas_html | safe }}
+        </div>
+    </div>
+
+    <div id="original_inputs" class="tab-content">
+        <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-2">Datos de Entrada Originales</h3>
+        <p class="text-xs text-[var(--color-text-muted)] mb-4">Valores de las variables de entrada seleccionadas para las DMUs analizadas.</p>
+        <div class="table-container">
+            {{ results.original_inputs_html | safe }}
+        </div>
+    </div>
+
+    <div id="original_outputs" class="tab-content">
+        <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-2">Datos de Salida Originales</h3>
+        <p class="text-xs text-[var(--color-text-muted)] mb-4">Valores de las variables de salida seleccionadas para las DMUs analizadas.</p>
+        <div class="table-container">
+            {{ results.original_outputs_html | safe }}
+        </div>
+    </div>
+
+    {% if ml_results and not ml_results.get('error') %}
+    <!-- Dimensionality Tab -->
+    <div id="dimensionality" class="tab-content">
+        <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-2">Análisis de Dimensionalidad</h3>
+        <p class="text-xs text-[var(--color-text-muted)] mb-4">Evaluación de la relación entre número de DMUs y variables (reglas de Cooper y Golany & Roll).</p>
+
+        {% set dim = ml_results.dimensionality %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="card-glass p-4">
+                <div class="kpi-label">DMUs</div>
+                <div class="kpi-value text-2xl">{{ dim.n_dmus }}</div>
+            </div>
+            <div class="card-glass p-4">
+                <div class="kpi-label">Variables</div>
+                <div class="kpi-value text-2xl">{{ dim.n_inputs }} inputs + {{ dim.n_outputs }} outputs</div>
+            </div>
+            <div class="card-glass p-4">
+                <div class="kpi-label">Regla de Cooper (mín {{ dim.cooper_min }})</div>
+                {% if dim.cooper_pass %}
+                <span class="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    Cumple
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1 text-sm font-semibold text-red-600">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                    No cumple
+                </span>
+                {% endif %}
+            </div>
+            <div class="card-glass p-4">
+                <div class="kpi-label">Regla Golany & Roll (mín {{ dim.golany_min }})</div>
+                {% if dim.golany_pass %}
+                <span class="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    Cumple
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1 text-sm font-semibold text-red-600">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                    No cumple
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if dim.high_corr_pairs %}
+        <div class="card-glass p-4 mb-6">
+            <h4 class="font-display text-sm font-semibold text-[var(--color-text)] mb-3">Correlaciones Altas (|r| &gt; 0.7)</h4>
+            <div class="table-container" style="max-height:250px;">
+                <table class="table table-striped table-hover">
+                    <thead><tr><th>Variable 1</th><th>Variable 2</th><th>Correlación</th></tr></thead>
+                    <tbody>
+                    {% for pair in dim.high_corr_pairs %}
+                    <tr>
+                        <td>{{ pair.var1 }}</td>
+                        <td>{{ pair.var2 }}</td>
+                        <td class="font-mono text-sm">{{ pair.correlation }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card-glass p-4 mb-6">
+            <h4 class="font-display text-sm font-semibold text-[var(--color-text)] mb-3">PCA — Varianza Explicada</h4>
+            <p class="text-xs text-[var(--color-text-muted)] mb-3">
+                {{ dim.n_components_90 }} componente(s) explican el 90% de la varianza
+                ({{ dim.n_components_95 }} para 95%).
+            </p>
+            <div class="rounded-xl overflow-hidden">
+                {{ dim.pca_chart_html | safe }}
+            </div>
+        </div>
+
+        <div class="card-glass p-4">
+            <h4 class="font-display text-sm font-semibold text-[var(--color-text)] mb-3">Recomendaciones</h4>
+            <ul class="list-disc list-inside space-y-2 text-sm text-[var(--color-text-secondary)]">
+                {% for rec in dim.recommendations %}
+                <li>{{ rec }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Importance SHAP Tab -->
+    <div id="importance" class="tab-content">
+        <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-2">Importancia de Variables (SHAP)</h3>
+        <p class="text-xs text-[var(--color-text-muted)] mb-4">Análisis SHAP con Random Forest para determinar qué variables impactan más la eficiencia.</p>
+
+        {% set imp = ml_results.importance %}
+        {% if imp.shap_summary_html %}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="card-glass p-4">
+                <div class="kpi-label">Variables analizadas</div>
+                <div class="kpi-value text-2xl">{{ imp.feature_names | length }}</div>
+            </div>
+            <div class="card-glass p-4">
+                <div class="kpi-label">Variables con importancia &gt; 0</div>
+                <div class="kpi-value text-2xl text-[var(--color-primary)]">{{ imp.n_important_variables }}</div>
+            </div>
+            <div class="card-glass p-4">
+                <div class="kpi-label">Modelo</div>
+                <div class="kpi-value text-lg">Random Forest</div>
+            </div>
+        </div>
+
+        <div class="card-glass p-4 mb-6">
+            <h4 class="font-display text-sm font-semibold text-[var(--color-text)] mb-3">SHAP — Impacto por Variable</h4>
+            <div class="rounded-xl overflow-hidden">
+                {{ imp.shap_summary_html | safe }}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="card-glass p-4">
+                <h4 class="font-display text-sm font-semibold text-[var(--color-text)] mb-3">Importancia Media (|SHAP|)</h4>
+                <div class="rounded-xl overflow-hidden">
+                    {{ imp.shap_bar_html | safe }}
+                </div>
+            </div>
+            <div class="card-glass p-4">
+                <h4 class="font-display text-sm font-semibold text-[var(--color-text)] mb-3">Matriz de Correlación</h4>
+                <div class="rounded-xl overflow-hidden">
+                    {{ imp.correlation_html | safe }}
+                </div>
+            </div>
+        </div>
+
+        {% if imp.importance_df %}
+        <div class="card-glass p-4 mt-6">
+            <h4 class="font-display text-sm font-semibold text-[var(--color-text)] mb-3">Ranking de Variables</h4>
+            <div class="table-container" style="max-height:300px;">
+                <table class="table table-striped table-hover">
+                    <thead><tr><th>#</th><th>Variable</th><th>Mean |SHAP|</th></tr></thead>
+                    <tbody>
+                    {% for row in imp.importance_df %}
+                    <tr>
+                        <td class="font-mono text-xs">{{ loop.index }}</td>
+                        <td>{{ row['Variable'] }}</td>
+                        <td class="font-mono text-sm">{{ "%.4f" | format(row['Mean |SHAP|']) }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="card-glass p-6 text-center">
+            <p class="text-[var(--color-text-muted)]">{{ imp.shap_summary_html | safe }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Diagnosis Tab -->
+    <div id="diagnosis" class="tab-content">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="font-display text-lg font-semibold text-[var(--color-text)]">Diagnóstico Prescriptivo IA</h3>
+                    <p class="text-xs text-[var(--color-text-muted)] mt-1">Selecciona una DMU ineficiente en la pestaña "Puntajes" y genera un plan de acción.</p>
+                </div>
+                <button onclick="generateDiagnosis()" id="diagnosis-button" class="btn-primary text-sm">
+                    Generar Diagnóstico
+                </button>
+            </div>
+
+            <div id="diagnosis-loading" class="hidden text-center py-8">
+                <div class="loader mb-4"></div>
+                <p class="text-[var(--color-text-muted)]">Generando diagnóstico...</p>
+            </div>
+
+            <div id="diagnosis-empty" class="text-center py-8">
+                <svg class="w-16 h-16 mx-auto mb-4 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="text-[var(--color-text-muted)]">Haz clic en una fila de la pestaña "Puntajes" para seleccionar una DMU, luego pulsa "Generar Diagnóstico".</p>
+            </div>
+
+            <div id="diagnosis-result" class="hidden space-y-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="diagnosis-kpis"></div>
+                <div class="card-glass p-4" id="diagnosis-summary"></div>
+                <div class="grid md:grid-cols-3 gap-4" id="diagnosis-plans"></div>
+                <div class="grid md:grid-cols-2 gap-4" id="diagnosis-metas"></div>
+            </div>
+
+            <div id="diagnosis-error" class="hidden text-center py-8">
+                <p class="text-red-500" id="diagnosis-error-msg"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="card-glass p-12 text-center animate-fade-in">
+    <svg class="w-16 h-16 mx-auto text-[var(--color-text-muted)] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+    </svg>
+    <p class="text-[var(--color-text-secondary)] text-lg mb-4">No hay resultados para mostrar.</p>
+    <a href="{{ url_for('index') }}" class="btn-primary inline-block">Realizar un Análisis</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].classList.remove("active");
         }
-        // Lógica para asegurar que la primera pestaña esté activa al cargar
-        document.addEventListener('DOMContentLoaded', function() {
-            const tabButtons = document.querySelectorAll('.tab-button');
-            const tabContents = document.querySelectorAll('.tab-content');
+        tablinks = document.getElementsByClassName("tab-button");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
 
-            // Si hay pestañas y ninguna está activa, activa la primera.
-            if (tabButtons.length > 0 && !document.querySelector('.tab-button.active')) {
-                tabButtons[0].classList.add('active');
-                if (tabContents.length > 0) {
-                    // Intenta obtener el nombre de la pestaña del primer botón
-                    try {
-                        const firstTabName = tabButtons[0].getAttribute('onclick').match(/'([^']+)'/)[1];
-                        if (document.getElementById(firstTabName)) {
-                            document.getElementById(firstTabName).classList.add('active');
-                        } else if (tabContents.length > 0) { 
-                            // Fallback si el parseo del onclick falla, activa el primer contenido
-                            tabContents[0].classList.add('active');
-                        }
-                    } catch (e) {
-                        // Fallback si el parseo del onclick falla
-                         if (tabContents.length > 0) {
-                            tabContents[0].classList.add('active');
-                        }
-                        console.warn("Could not determine first tab name from onclick, defaulting to first tab content if available.");
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        if (tabButtons.length > 0 && !document.querySelector('.tab-button.active')) {
+            tabButtons[0].classList.add('active');
+            if (tabContents.length > 0) {
+                try {
+                    const firstTabName = tabButtons[0].getAttribute('onclick').match(/'([^']+)'/)[1];
+                    if (document.getElementById(firstTabName)) {
+                        document.getElementById(firstTabName).classList.add('active');
+                    } else if (tabContents.length > 0) {
+                        tabContents[0].classList.add('active');
+                    }
+                } catch (e) {
+                    if (tabContents.length > 0) {
+                        tabContents[0].classList.add('active');
                     }
                 }
             }
-        });
-    </script>
-</body>
-</html>
+        }
+
+        // DMU selection from scores table → simulator link + diagnosis
+        const scoresTable = document.querySelector('#scores .table');
+        const simulatorLink = document.getElementById('simulator-link');
+        let selectedDmuIndex = -1;
+        if (scoresTable && simulatorLink) {
+            const rows = scoresTable.querySelectorAll('tbody tr');
+            rows.forEach(function(row, idx) {
+                row.style.cursor = 'pointer';
+                row.addEventListener('click', function() {
+                    rows.forEach(r => r.classList.remove('bg-indigo-50'));
+                    this.classList.add('bg-indigo-50');
+                    selectedDmuIndex = idx;
+
+                    const dmuName = this.cells[0] ? this.cells[0].textContent.trim() : '';
+                    if (dmuName) {
+                        simulatorLink.href = '{{ url_for("simulator") }}?dmu=' + encodeURIComponent(dmuName);
+                    }
+                });
+            });
+        }
+
+        async function generateDiagnosis() {
+            const btn = document.getElementById('diagnosis-button');
+            const loading = document.getElementById('diagnosis-loading');
+            const empty = document.getElementById('diagnosis-empty');
+            const result = document.getElementById('diagnosis-result');
+            const error = document.getElementById('diagnosis-error');
+
+            if (selectedDmuIndex < 0) {
+                alert('Selecciona una DMU ineficiente en la pestaña "Puntajes" primero');
+                return;
+            }
+
+            btn.disabled = true;
+            loading.classList.remove('hidden');
+            empty.classList.add('hidden');
+            result.classList.add('hidden');
+            error.classList.add('hidden');
+
+            try {
+                const resp = await fetch('/api/diagnosis', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({dmu_index: selectedDmuIndex, provider: 'auto'})
+                });
+                const data = await resp.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                document.getElementById('diagnosis-kpis').innerHTML =
+                    '<div class="card-kpi text-center p-4">' +
+                        '<div class="text-2xl font-bold text-[var(--color-primary)]">' + (data.efficiency_score ? (data.efficiency_score * 100).toFixed(1) + '%' : 'N/A') + '</div>' +
+                        '<div class="text-sm text-[var(--color-text-muted)]">Score</div>' +
+                    '</div>' +
+                    '<div class="card-kpi text-center p-4">' +
+                        '<div class="text-2xl font-bold ' + (data.status === 'EFICIENTE' ? 'text-green-600' : 'text-red-500') + '">' + (data.status || 'N/A') + '</div>' +
+                        '<div class="text-sm text-[var(--color-text-muted)]">Estado</div>' +
+                    '</div>' +
+                    '<div class="card-kpi text-center p-4">' +
+                        '<div class="text-2xl font-bold text-[var(--color-primary)]">' + ((data.meta_inputs ? Object.keys(data.meta_inputs).length : 0) + (data.meta_outputs ? Object.keys(data.meta_outputs).length : 0)) + '</div>' +
+                        '<div class="text-sm text-[var(--color-text-muted)]">Variables a Ajustar</div>' +
+                    '</div>' +
+                    '<div class="card-kpi text-center p-4">' +
+                        '<div class="text-2xl font-bold text-[var(--color-primary)]">' + (data.provider_used || 'N/A') + '</div>' +
+                        '<div class="text-sm text-[var(--color-text-muted)]">Proveedor IA</div>' +
+                    '</div>';
+
+                document.getElementById('diagnosis-summary').innerHTML =
+                    '<h4 class="font-display font-semibold text-[var(--color-text)] mb-2">Resumen Ejecutivo</h4>' +
+                    '<p class="text-sm text-[var(--color-text-secondary)]">' + (data.summary || 'Sin resumen disponible') + '</p>';
+
+                var renderPlan = function(title, items, dotColor) {
+                    if (!items || items.length === 0) return '';
+                    return '<div class="card-glass p-4">' +
+                        '<h5 class="font-display font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">' +
+                            '<span class="w-2.5 h-2.5 rounded-full ' + dotColor + '"></span>' + title +
+                        '</h5>' +
+                        '<ul class="space-y-2">' +
+                            items.map(function(item) {
+                                return '<li class="text-sm text-[var(--color-text-secondary)] flex items-start gap-2">' +
+                                    '<span class="text-[var(--color-primary)] mt-0.5">&#x2022;</span>' + item + '</li>';
+                            }).join('') +
+                        '</ul>' +
+                    '</div>';
+                };
+
+                document.getElementById('diagnosis-plans').innerHTML =
+                    renderPlan('Corto Plazo', data.short_term, 'bg-red-500') +
+                    renderPlan('Mediano Plazo', data.medium_term, 'bg-amber-500') +
+                    renderPlan('Largo Plazo', data.long_term, 'bg-green-500');
+
+                var renderMeta = function(title, metas) {
+                    if (!metas || Object.keys(metas).length === 0) return '';
+                    return '<div class="card-glass p-4">' +
+                        '<h5 class="font-display font-semibold text-[var(--color-text)] mb-3">' + title + '</h5>' +
+                        '<div class="space-y-2">' +
+                            Object.entries(metas).map(function(entry) {
+                                return '<div class="flex justify-between text-sm">' +
+                                    '<span class="text-[var(--color-text-secondary)]">' + entry[0] + '</span>' +
+                                    '<span class="font-mono text-[var(--color-primary)]">' + entry[1] + '</span>' +
+                                '</div>';
+                            }).join('') +
+                        '</div>' +
+                    '</div>';
+                };
+
+                document.getElementById('diagnosis-metas').innerHTML =
+                    renderMeta('Meta Inputs (Reducir)', data.meta_inputs) +
+                    renderMeta('Meta Outputs (Aumentar)', data.meta_outputs);
+
+                result.classList.remove('hidden');
+            } catch (err) {
+                error.classList.remove('hidden');
+                document.getElementById('diagnosis-error-msg').textContent = err.message;
+            } finally {
+                btn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -3,6 +3,50 @@ import numpy as np
 from Pyfrontier.frontier_model import EnvelopDEA 
 from sklearn.preprocessing import MinMaxScaler
 import logging
+import plotly.io as pio
+import plotly.graph_objects as go
+
+# Plotly template "dea" — glass light aesthetic
+dea_template = go.layout.Template(
+    layout=go.Layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='Inter, system-ui, sans-serif', color='#18181b'),
+        title=dict(
+            font=dict(family='Space Grotesk, Inter, sans-serif', size=20, color='#4f46e5'),
+            x=0.02,
+            xanchor='left'
+        ),
+        xaxis=dict(
+            gridcolor='#e4e4e7',
+            gridwidth=1,
+            griddash='dot',
+            zerolinecolor='#d4d4d8',
+            tickfont=dict(size=12)
+        ),
+        yaxis=dict(
+            gridcolor='#e4e4e7',
+            gridwidth=1,
+            griddash='dot',
+            zerolinecolor='#d4d4d8',
+            tickfont=dict(size=12)
+        ),
+        colorway=['#4f46e5', '#06b6d4', '#059669', '#f59e0b', '#dc2626', '#8b5cf6', '#ec4899'],
+        margin=dict(l=40, r=40, t=60, b=40),
+        legend=dict(
+            bgcolor='rgba(255,255,255,0.7)',
+            bordercolor='rgba(99,102,241,0.15)',
+            borderwidth=1,
+            font=dict(size=12)
+        ),
+        hoverlabel=dict(
+            bgcolor='white',
+            bordercolor='rgba(99,102,241,0.2)',
+            font=dict(size=13)
+        )
+    )
+)
+pio.templates["dea"] = dea_template
 
 logger = logging.getLogger(__name__)
 

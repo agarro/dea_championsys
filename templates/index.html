@@ -1,349 +1,331 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análisis DEA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .form-checkbox, .form-radio { margin-right: 0.25rem; }
-        .table-container { max-height: 400px; overflow-y: auto; }
-        .tooltip {
-            position: relative;
-            display: inline-block;
-        }
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 240px; /* Increased width */
-            background-color: #374151; /* gray-700 */
-            color: #fff;
-            text-align: left; /* Align text left for better readability */
-            border-radius: 6px;
-            padding: 8px 12px; /* More padding */
-            position: absolute;
-            z-index: 10;
-            bottom: 125%; 
-            left: 50%;
-            margin-left: -120px; 
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 0.8rem; /* Smaller font */
-            line-height: 1.4; /* Better line spacing */
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
-        .tooltip .tooltiptext::after {
-            content: "";
-            position: absolute;
-            top: 100%; 
-            left: 50%;
-            margin-left: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: #374151 transparent transparent transparent;
-        }
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-        .loader {
-            border: 5px solid #f3f3f3; /* Light grey */
-            border-top: 5px solid #3b82f6; /* Blue-500 */
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* Custom scrollbar for checkbox lists */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1; /* cool-gray-300 */
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; /* cool-gray-400 */
-        }
-    </style>
-</head>
-<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center pt-6 pb-10">
-    <div class="container bg-white shadow-2xl rounded-xl p-6 md:p-10 w-full max-w-4xl">
-            <!-- Logo -->
-        <img src="{{ url_for('static', filename='logo.png') }}" 
-          alt="Logo" 
-          class="logo img-fluid mb-4" 
-          style="max-width: 200px; margin-bottom: 2rem;">    
-        <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
-            <h1 class="text-3xl font-bold text-blue-600">Herramienta de Análisis Frontera de Eficiencia</h1>
-            {% if session.get('filepath') %}
-            <a href="{{ url_for('clear_session_route') }}" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out shadow-md hover:shadow-lg">
-                Empezar de Nuevo
-            </a>
-            {% endif %}
+{% extends "base.html" %}
+
+{% block title %}DEA ChampionSys — Análisis{% endblock %}
+
+{% block content %}
+<!-- Hero Bento -->
+<div class="mb-8 animate-fade-in">
+    <div class="card-glass p-8 text-center">
+        <h1 class="font-display text-3xl md:text-4xl font-bold text-[var(--color-primary)] mb-3">
+            Herramienta de Análisis Frontera de Eficiencia
+        </h1>
+        <p class="text-[var(--color-text-secondary)] text-lg max-w-2xl mx-auto mb-6">
+            Análisis Envoltorio de Datos (DEA) para evaluar la eficiencia relativa de unidades de decisión (DMUs).
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
+            <span class="pill-checkbox active">Python 3.9</span>
+            <span class="pill-checkbox active">Flask</span>
+            <span class="pill-checkbox active">Tailwind v4</span>
+            <span class="pill-checkbox active">Plotly 4.0</span>
         </div>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                <div class="p-4 mb-4 text-sm rounded-lg shadow-sm
-                    {% if category == 'error' %} bg-red-100 text-red-700 border border-red-300
-                    {% elif category == 'success' %} bg-green-100 text-green-700 border border-green-300
-                    {% else %} bg-blue-100 text-blue-700 border border-blue-300 {% endif %}" role="alert">
-                    <span class="font-medium">{{ category|capitalize }}:</span> {{ message }}
-                </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% if upload_page and not config_step %}
-        <div id="upload-section" class="mb-8 p-6 bg-gray-50 rounded-lg shadow-md">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Paso 1: Cargar Archivo de Datos</h2>
-            <form method="POST" enctype="multipart/form-data" action="{{ url_for('index') }}" id="upload-form">
-                <div class="mb-4">
-                    <label for="file" class="block text-sm font-medium text-gray-700 mb-1">Seleccione un archivo CSV o Excel:</label>
-                    <input type="file" name="file" id="file" required 
-                           class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 p-2.5 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                    <p class="mt-1 text-xs text-gray-500">Archivos permitidos: .csv, .xlsx, .xls. Asegúrese que los datos numéricos (inputs/outputs) sean de tipo FLOAT o puedan ser convertidos a numérico.</p>
-                </div>
-                <button type="submit" id="upload-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-                    Cargar y Continuar
-                </button>
-            </form>
-            <div id="upload-loader" class="loader" style="display: none;"></div>
-        </div>
-        {% endif %}
-
-        {% if config_step and columns %}
-        <div id="config-section" class="mb-8 p-6 bg-gray-50 rounded-lg shadow-md">
-            <h2 class="text-xl font-semibold text-gray-700 mb-2">Paso 2: Configurar Análisis para <span class="text-blue-600 font-medium">{{ session.get('filename', 'el archivo cargado') }}</span></h2>
-            <p class="text-sm text-gray-600 mb-6">Seleccione las columnas y parámetros para el análisis DEA. El sistema elegirá automáticamente entre modelo CCR y BCC.</p>
-            
-            <form method="POST" action="{{ url_for('analyze') }}" id="analysis-form">
-                <div class="mb-6">
-                    <label for="dmu_column" class="block text-sm font-medium text-gray-700 mb-1">Columna de Unidades (DMU):
-                        <span class="tooltip text-blue-500 cursor-pointer">(?)
-                            <span class="tooltiptext">Seleccione la columna que identifica cada unidad (ej: Comisaría, Hospital). Debe ser única para cada fila.</span>
-                        </span>
-                    </label>
-                    <select name="dmu_column" id="dmu_column" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                        <option value="">Seleccione una columna...</option>
-                        {% for col in potential_dmu_cols %}
-                        <option value="{{ col }}" {% if analysis_config.dmu_column == col %}selected{% endif %}>{{ col }}</option>
-                        {% endfor %}
-                         {% for col in columns %}
-                            {% if col not in potential_dmu_cols %}
-                                <option value="{{ col }}" {% if analysis_config.dmu_column == col %}selected{% endif %}>{{ col }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Columnas de Input:
-                            <span class="tooltip text-blue-500 cursor-pointer">(?)
-                                <span class="tooltiptext">Marque las columnas que representan los recursos consumidos. Deben ser valores numéricos donde MÁS es PEOR (o más costoso).</span>
-                            </span>
-                        </label>
-                        <div class="space-y-1 max-h-60 overflow-y-auto border border-gray-300 rounded-md p-3 bg-white custom-scrollbar">
-                            {% for col in numeric_columns %}
-                            <label class="flex items-center hover:bg-gray-50 p-1 rounded">
-                                <input type="checkbox" name="input_columns" value="{{ col }}" class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                {% if col in analysis_config.get('input_columns', []) %}checked{% endif %}>
-                                <span class="ml-2 text-sm text-gray-700">{{ col }}</span>
-                            </label>
-                            {% else %}
-                            <p class="text-xs text-gray-500">No hay columnas numéricas disponibles. Verifique su archivo.</p>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Columnas de Output:
-                             <span class="tooltip text-blue-500 cursor-pointer">(?)
-                                <span class="tooltiptext">Marque las columnas que representan los resultados o productos generados. Deben ser valores numéricos donde MÁS es MEJOR.</span>
-                            </span>
-                        </label>
-                        <div class="space-y-1 max-h-60 overflow-y-auto border border-gray-300 rounded-md p-3 bg-white custom-scrollbar">
-                            {% for col in numeric_columns %}
-                            <label class="flex items-center hover:bg-gray-50 p-1 rounded">
-                                <input type="checkbox" name="output_columns" value="{{ col }}" class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 output-checkbox"
-                                {% if col in analysis_config.get('output_columns', []) %}checked{% endif %} onchange="updateUndesirableOptions()">
-                                <span class="ml-2 text-sm text-gray-700">{{ col }}</span>
-                            </label>
-                            {% else %}
-                            <p class="text-xs text-gray-500">No hay columnas numéricas disponibles.</p>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-6" id="undesirable-outputs-section" style="display: none;">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Outputs No Deseables (opcional):
-                        <span class="tooltip text-blue-500 cursor-pointer">(?)
-                            <span class="tooltiptext">Marque los outputs donde valores MÁS ALTOS son PEORES (ej: contaminación, errores). Estos se tratarán como 1/valor. Solo aparecerán las columnas que haya marcado como Output.</span>
-                        </span>
-                    </label>
-                    <div id="undesirable-options-container" class="space-y-1 max-h-48 overflow-y-auto border border-gray-300 rounded-md p-3 bg-white custom-scrollbar">
-                        <p class="text-xs text-gray-500">Seleccione primero las columnas de Output.</p>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Orientación del Modelo:
-                             <span class="tooltip text-blue-500 cursor-pointer">(?)
-                                <span class="tooltiptext">Input: Minimizar inputs para un nivel de output dado.<br>Output: Maximizar outputs para un nivel de input dado.</span>
-                            </span>
-                        </label>
-                        <div class="flex items-center space-x-4 bg-white p-3 rounded-md border border-gray-300">
-                            <label class="flex items-center">
-                                <input type="radio" name="orientation" value="input" class="form-radio h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" 
-                                {% if analysis_config.get('orientation', 'input') == 'input' %}checked{% endif %}>
-                                <span class="ml-2 text-sm text-gray-700">Orientado a Input</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="orientation" value="output" class="form-radio h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                {% if analysis_config.get('orientation') == 'output' %}checked{% endif %}>
-                                <span class="ml-2 text-sm text-gray-700">Orientado a Output</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="flex items-end"> <label class="flex items-center bg-white p-3 rounded-md border border-gray-300 w-full h-full">
-                            <input type="checkbox" name="normalize" value="true" class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            {% if analysis_config.get('normalize') %}checked{% endif %}>
-                            <span class="ml-2 text-sm font-medium text-gray-700">Normalizar datos (Min-Max 0-1)
-                                <span class="tooltip text-blue-500 cursor-pointer">(?)
-                                    <span class="tooltiptext">Opcional. Transforma todos los inputs/outputs seleccionados a una escala de 0 a 1. Puede ser útil si las variables tienen rangos muy diferentes.</span>
-                                </span>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-
-                <button type="submit" id="analyze-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
-                    Realizar Análisis DEA
-                </button>
-            </form>
-            <div id="analysis-loader" class="loader" style="display: none;"></div>
-        </div>
-        {% endif %}
-
     </div>
+</div>
 
-    <footer class="text-center text-sm text-gray-500 mt-8">
-        CHAMPIONSYS &copy; {{ current_year }}
-    </footer>
-
-    <script>
-        function updateUndesirableOptions() {
-            const outputCheckboxes = document.querySelectorAll('.output-checkbox');
-            const container = document.getElementById('undesirable-options-container');
-            const section = document.getElementById('undesirable-outputs-section');
-            
-            // Get previously selected undesirable outputs if form is being repopulated
-            const analysisConfig = JSON.parse('{{ analysis_config | default({}) | tojson | safe }}');
-            const preSelectedUndesirables = analysisConfig.undesirable_outputs || [];
-
-            let selectedOutputs = [];
-            outputCheckboxes.forEach(checkbox => {
-                if (checkbox.checked) {
-                    selectedOutputs.push(checkbox.value);
-                }
-            });
-
-            if (selectedOutputs.length > 0) {
-                section.style.display = 'block';
-                container.innerHTML = ''; 
-                selectedOutputs.forEach(outputName => {
-                    const label = document.createElement('label');
-                    label.className = 'flex items-center text-sm text-gray-700 hover:bg-gray-50 p-1 rounded';
-                    const input = document.createElement('input');
-                    input.type = 'checkbox';
-                    input.name = 'undesirable_outputs';
-                    input.value = outputName;
-                    input.className = 'form-checkbox h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500';
-                    if (preSelectedUndesirables.includes(outputName)) {
-                        input.checked = true;
-                    }
-                    const span = document.createElement('span');
-                    span.className = 'ml-2';
-                    span.textContent = outputName;
-                    label.appendChild(input);
-                    label.appendChild(span);
-                    container.appendChild(label);
-                });
-            } else {
-                section.style.display = 'none';
-                container.innerHTML = '<p class="text-xs text-gray-500">Seleccione primero las columnas de Output.</p>';
-            }
-        }
+{% if upload_page and not config_step %}
+<!-- PASO 1: Cargar Archivo -->
+<div id="upload-section" class="card-glass p-8 mb-8 animate-fade-in">
+    <div class="flex items-center space-x-3 mb-6">
+        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+            <span class="font-display text-lg font-bold text-[var(--color-primary)]">1</span>
+        </div>
+        <h2 class="font-display text-xl font-semibold text-[var(--color-text)]">Cargar Archivo de Datos</h2>
+    </div>
+    
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('index') }}" id="upload-form">
+        <!-- Dropzone -->
+        <div class="border-2 border-dashed border-indigo-200 rounded-xl p-8 text-center hover:border-[var(--color-primary)] transition-colors mb-4 cursor-pointer"
+             onclick="document.getElementById('file').click()">
+            <svg class="w-12 h-12 mx-auto text-indigo-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+            <p class="text-[var(--color-text-secondary)] mb-2">
+                <span class="font-semibold text-[var(--color-primary)]">Click para seleccionar</span> o arrastra un archivo
+            </p>
+            <p class="text-xs text-[var(--color-text-muted)]">CSV, Excel (.xlsx, .xls) — datos numéricos en formato FLOAT</p>
+            <input type="file" name="file" id="file" required class="hidden">
+        </div>
         
-        document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('config-section')) { // Only run if config section is present
-                 updateUndesirableOptions(); // Initial call
-            }
+        <!-- Selected file name -->
+        <div id="file-name" class="text-sm text-[var(--color-text-secondary)] mb-4 hidden">
+            <span class="font-medium">Archivo:</span> <span id="file-name-text"></span>
+        </div>
 
-            const uploadForm = document.getElementById('upload-form');
-            const uploadButton = document.getElementById('upload-button');
-            const uploadLoader = document.getElementById('upload-loader');
+        <button type="submit" id="upload-button" class="btn-primary w-full">
+            Cargar y Continuar
+        </button>
+    </form>
+    <div id="upload-loader" class="loader" style="display: none;"></div>
+</div>
+{% endif %}
 
-            if (uploadForm) {
-                uploadForm.addEventListener('submit', function() {
-                    if (document.getElementById('file').files.length === 0) {
-                        // Already handled by 'required' attribute, but good for JS fallback
-                        return; 
-                    }
-                    if (uploadButton) uploadButton.disabled = true;
-                    if (uploadButton) uploadButton.textContent = 'Cargando...';
-                    if (uploadLoader) uploadLoader.style.display = 'block';
-                });
-            }
+{% if config_step and columns %}
+<!-- PASO 2: Configurar Análisis -->
+<div id="config-section" class="card-glass p-8 mb-8 animate-fade-in">
+    <div class="flex items-center space-x-3 mb-2">
+        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+            <span class="font-display text-lg font-bold text-[var(--color-primary)]">2</span>
+        </div>
+        <h2 class="font-display text-xl font-semibold text-[var(--color-text)]">
+            Configurar Análisis para <span class="text-[var(--color-primary)]">{{ session.get('filename', 'el archivo cargado') }}</span>
+        </h2>
+    </div>
+    <p class="text-sm text-[var(--color-text-secondary)] mb-6 ml-13">
+        Seleccione las columnas y parámetros para el análisis DEA.
+    </p>
+    
+    <form method="POST" action="{{ url_for('analyze') }}" id="analysis-form">
+        <!-- DMU Column -->
+        <div class="mb-6">
+            <label for="dmu_column" class="block text-sm font-medium text-[var(--color-text)] mb-2">
+                Columna de Unidades (DMU)
+                <span class="tooltip text-[var(--color-primary)] cursor-pointer ml-1">(?)
+                    <span class="tooltiptext">Seleccione la columna que identifica cada unidad (ej: Comisaría, Hospital). Debe ser única para cada fila.</span>
+                </span>
+            </label>
+            <select name="dmu_column" id="dmu_column" required class="select-glass">
+                <option value="">Seleccione una columna...</option>
+                {% for col in potential_dmu_cols %}
+                <option value="{{ col }}" {% if analysis_config.dmu_column == col %}selected{% endif %}>{{ col }}</option>
+                {% endfor %}
+                {% for col in columns %}
+                    {% if col not in potential_dmu_cols %}
+                    <option value="{{ col }}" {% if analysis_config.dmu_column == col %}selected{% endif %}>{{ col }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
 
-            const analysisForm = document.getElementById('analysis-form');
-            const analyzeButton = document.getElementById('analyze-button');
-            const analysisLoader = document.getElementById('analysis-loader');
-            if (analysisForm) {
-                analysisForm.addEventListener('submit', function(event) {
-                    const dmu = document.getElementById('dmu_column').value;
-                    const inputs = document.querySelectorAll('input[name="input_columns"]:checked').length;
-                    const outputs = document.querySelectorAll('input[name="output_columns"]:checked').length;
-                    let valid = true;
+        <!-- Input/Output Columns -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-[var(--color-text)] mb-2">
+                    Columnas de Input
+                    <span class="tooltip text-[var(--color-primary)] cursor-pointer ml-1">(?)
+                        <span class="tooltiptext">Marque las columnas que representan los recursos consumidos. Deben ser valores numéricos donde MÁS es PEOR (o más costoso).</span>
+                    </span>
+                </label>
+                <div class="space-y-2 max-h-60 overflow-y-auto border border-[var(--color-surface-border)] rounded-xl p-3 bg-white/30 custom-scrollbar">
+                    {% for col in numeric_columns %}
+                    <div class="flex items-center gap-2 py-1">
+                        <input type="checkbox" name="input_columns" value="{{ col }}" id="input-{{ loop.index }}" class="accent-[var(--color-primary)]"
+                        {% if col in analysis_config.get('input_columns', []) %}checked{% endif %}>
+                        <label for="input-{{ loop.index }}" class="text-sm cursor-pointer">{{ col }}</label>
+                    </div>
+                    {% else %}
+                    <p class="text-xs text-[var(--color-text-muted)]">No hay columnas numéricas disponibles.</p>
+                    {% endfor %}
+                </div>
+            </div>
 
-                    if (!dmu) {
-                        alert('Por favor, seleccione una columna de DMU.');
-                        valid = false;
-                    } else if (inputs === 0) {
-                        alert('Por favor, seleccione al menos un input.');
-                        valid = false;
-                    } else if (outputs === 0) {
-                        alert('Por favor, seleccione al menos un output.');
-                        valid = false;
-                    }
+            <div>
+                <label class="block text-sm font-medium text-[var(--color-text)] mb-2">
+                    Columnas de Output
+                    <span class="tooltip text-[var(--color-primary)] cursor-pointer ml-1">(?)
+                        <span class="tooltiptext">Marque las columnas que representan los resultados o productos generados. Deben ser valores numéricos donde MÁS es MEJOR.</span>
+                    </span>
+                </label>
+                <div class="space-y-2 max-h-60 overflow-y-auto border border-[var(--color-surface-border)] rounded-xl p-3 bg-white/30 custom-scrollbar">
+                    {% for col in numeric_columns %}
+                    <label class="pill-checkbox {% if col in analysis_config.get('output_columns', []) %}active{% endif %}">
+                        <input type="checkbox" name="output_columns" value="{{ col }}" class="output-checkbox"
+                        {% if col in analysis_config.get('output_columns', []) %}checked{% endif %} onchange="updateUndesirableOptions()">
+                        {{ col }}
+                    </label>
+                    {% else %}
+                    <p class="text-xs text-[var(--color-text-muted)]">No hay columnas numéricas disponibles.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
 
-                    if (!valid) {
-                        event.preventDefault();
-                        return;
-                    }
-                    
-                    if (analyzeButton) analyzeButton.disabled = true;
-                    if (analyzeButton) analyzeButton.textContent = 'Analizando...';
-                    if (analysisLoader) analysisLoader.style.display = 'block';
-                });
+        <!-- Undesirable Outputs -->
+        <div class="mb-6" id="undesirable-outputs-section" style="display: none;">
+            <label class="block text-sm font-medium text-[var(--color-text)] mb-2">
+                Outputs No Deseables (opcional)
+                <span class="tooltip text-[var(--color-primary)] cursor-pointer ml-1">(?)
+                    <span class="tooltiptext">Marque los outputs donde valores MÁS ALTOS son PEORES (ej: contaminación, errores). Estos se tratarán como 1/valor.</span>
+                </span>
+            </label>
+            <div id="undesirable-options-container" class="space-y-2 max-h-48 overflow-y-auto border border-[var(--color-surface-border)] rounded-xl p-3 bg-white/30 custom-scrollbar">
+                <p class="text-xs text-[var(--color-text-muted)]">Seleccione primero las columnas de Output.</p>
+            </div>
+        </div>
+
+        <!-- Orientation + Normalize -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-[var(--color-text)] mb-2">
+                    Orientación del Modelo
+                    <span class="tooltip text-[var(--color-primary)] cursor-pointer ml-1">(?)
+                        <span class="tooltiptext">Input: Minimizar inputs para un nivel de output dado.<br>Output: Maximizar outputs para un nivel de input dado.</span>
+                    </span>
+                </label>
+                <div class="flex items-center space-x-4 p-3 rounded-xl border border-[var(--color-surface-border)] bg-white/30">
+                    <label class="pill-checkbox {% if analysis_config.get('orientation', 'input') == 'input' %}active{% endif %}">
+                        <input type="radio" name="orientation" value="input" 
+                        {% if analysis_config.get('orientation', 'input') == 'input' %}checked{% endif %}>
+                        Orientado a Input
+                    </label>
+                    <label class="pill-checkbox {% if analysis_config.get('orientation') == 'output' %}active{% endif %}">
+                        <input type="radio" name="orientation" value="output"
+                        {% if analysis_config.get('orientation') == 'output' %}checked{% endif %}>
+                        Orientado a Output
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Normalización</label>
+                <label class="pill-checkbox w-full justify-center {% if analysis_config.get('normalize') %}active{% endif %}">
+                    <input type="checkbox" name="normalize" value="true"
+                    {% if analysis_config.get('normalize') %}checked{% endif %}>
+                    Normalizar datos (Min-Max 0-1)
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" id="analyze-button" class="btn-primary w-full" style="background: var(--color-success);">
+            Realizar Análisis DEA
+        </button>
+    </form>
+    <div id="analysis-loader" class="loader" style="display: none;"></div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ===== Dropzone file name display =====
+    const fileInput = document.getElementById('file');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const fileName = document.getElementById('file-name');
+            const fileNameText = document.getElementById('file-name-text');
+            if (e.target.files.length > 0) {
+                fileName.classList.remove('hidden');
+                fileNameText.textContent = e.target.files[0].name;
+            } else {
+                fileName.classList.add('hidden');
             }
         });
-    </script>
-</body>
-</html>
+    }
+
+    // ===== Pill checkbox toggle =====
+    // Use a delegated click handler on document so both static and dynamically
+    // created pills work without needing to re-bind after DOM changes.
+    document.addEventListener('click', function(e) {
+        const label = e.target.closest('.pill-checkbox');
+        if (!label) return;
+        const input = label.querySelector('input[type="checkbox"], input[type="radio"]');
+        if (!input) return;
+        // Let the browser toggle the checkbox natively (label→input association),
+        // then sync the visual state. Do NOT call preventDefault — it blocks
+        // the native toggle and breaks HTML onchange attribute handlers.
+        // Use setTimeout(0) to read the state AFTER the browser finishes its
+        // native toggle on the next microtask.
+        setTimeout(function() {
+            label.classList.toggle('active', input.checked);
+            // Dispatch change so any JS listeners (not just HTML onchange) also fire
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }, 0);
+    });
+
+    // ===== Undesirable outputs (PRESERVED EXACTLY) =====
+    function updateUndesirableOptions() {
+        const outputCheckboxes = document.querySelectorAll('.output-checkbox');
+        const container = document.getElementById('undesirable-options-container');
+        const section = document.getElementById('undesirable-outputs-section');
+        
+        const analysisConfig = JSON.parse('{{ analysis_config | default({}) | tojson | safe }}');
+        const preSelectedUndesirables = analysisConfig.undesirable_outputs || [];
+
+        let selectedOutputs = [];
+        outputCheckboxes.forEach(function(checkbox) {
+            if (checkbox.checked) {
+                selectedOutputs.push(checkbox.value);
+            }
+        });
+
+        if (selectedOutputs.length > 0) {
+            section.style.display = 'block';
+            container.innerHTML = '';
+            selectedOutputs.forEach(function(outputName) {
+                const label = document.createElement('label');
+                label.className = 'pill-checkbox';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.name = 'undesirable_outputs';
+                input.value = outputName;
+                if (preSelectedUndesirables.includes(outputName)) {
+                    input.checked = true;
+                    label.classList.add('active');
+                }
+                // No per-input change listener needed — the delegated click handler
+                // on document already syncs the 'active' class after native toggle.
+                const span = document.createElement('span');
+                span.textContent = outputName;
+                label.appendChild(input);
+                label.appendChild(span);
+                container.appendChild(label);
+            });
+        } else {
+            section.style.display = 'none';
+            container.innerHTML = '<p class="text-xs text-[var(--color-text-muted)]">Seleccione primero las columnas de Output.</p>';
+        }
+    }
+
+    // ===== Upload form handler (PRESERVED EXACTLY) =====
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('config-section')) {
+            updateUndesirableOptions();
+        }
+
+        const uploadForm = document.getElementById('upload-form');
+        const uploadButton = document.getElementById('upload-button');
+        const uploadLoader = document.getElementById('upload-loader');
+
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', function() {
+                if (document.getElementById('file').files.length === 0) {
+                    return;
+                }
+                if (uploadButton) uploadButton.disabled = true;
+                if (uploadButton) uploadButton.textContent = 'Cargando...';
+                if (uploadLoader) uploadLoader.style.display = 'block';
+            });
+        }
+
+        const analysisForm = document.getElementById('analysis-form');
+        const analyzeButton = document.getElementById('analyze-button');
+        const analysisLoader = document.getElementById('analysis-loader');
+        if (analysisForm) {
+            analysisForm.addEventListener('submit', function(event) {
+                const dmu = document.getElementById('dmu_column').value;
+                const inputs = document.querySelectorAll('input[name="input_columns"]:checked').length;
+                const outputs = document.querySelectorAll('input[name="output_columns"]:checked').length;
+                let valid = true;
+
+                if (!dmu) {
+                    alert('Por favor, seleccione una columna de DMU.');
+                    valid = false;
+                } else if (inputs === 0) {
+                    alert('Por favor, seleccione al menos un input.');
+                    valid = false;
+                } else if (outputs === 0) {
+                    alert('Por favor, seleccione al menos un output.');
+                    valid = false;
+                }
+
+                if (!valid) {
+                    event.preventDefault();
+                    return;
+                }
+                
+                if (analyzeButton) analyzeButton.disabled = true;
+                if (analyzeButton) analyzeButton.textContent = 'Analizando...';
+                if (analysisLoader) analysisLoader.style.display = 'block';
+            });
+        }
+    });
+</script>
+{% endblock %}

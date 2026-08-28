@@ -1,131 +1,118 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gráficas de Frontera de Eficiencia</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .plotly-graph-div { min-height: 500px; width: 100%; } 
-    </style>
-</head>
-<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center pt-6 pb-10">
-    <div class="container bg-white shadow-2xl rounded-xl p-6 md:p-10 w-full max-w-5xl">
-            <!-- Logo -->
-           <img src="{{ url_for('static', filename='logo.png') }}" 
-             alt="Logo" 
-             class="logo img-fluid mb-4" 
-             style="max-width: 200px; margin-bottom: 2rem;"> 
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
-            <h1 class="text-3xl font-bold text-blue-600 mb-3 sm:mb-0">Gráficas de Frontera de Eficiencia</h1>
-            <div class="flex space-x-2 flex-wrap">
-                <a href="{{ url_for('show_results') }}" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out shadow-md hover:shadow-lg mb-2 sm:mb-0">
-                    Volver a Resultados
-                </a>
-                 <a href="{{ url_for('clear_session_route') }}" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out shadow-md hover:shadow-lg mb-2 sm:mb-0">
-                    Nuevo Análisis
-                </a>
-            </div>
-        </div>
+{% extends "base.html" %}
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                <div class="p-4 mb-4 text-sm rounded-lg shadow-sm
-                    {% if category == 'error' %} bg-red-100 text-red-700 border border-red-300
-                    {% elif category == 'success' %} bg-green-100 text-green-700 border border-green-300
-                    {% else %} bg-blue-100 text-blue-700 border border-blue-300 {% endif %}" role="alert">
-                    <span class="font-medium">{{ category|capitalize }}:</span> {{ message }}
-                </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+{% block title %}DEA ChampionSys — Gráficas{% endblock %}
 
-        {% if analysis_config %}
-        <div class="mb-8 p-6 bg-gray-50 rounded-lg shadow-md">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Seleccionar Variables para Graficar</h2>
-            <p class="text-sm text-gray-600 mb-4">
-                Elija un input y un output para visualizar la frontera de eficiencia en 2D.
-                La gráfica mostrará los datos originales (antes de la normalización, pero después del tratamiento de outputs no deseables si aplica).
-            </p>
-            <form method="POST" action="{{ url_for('show_graphs') }}" id="graph-form">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                    <div>
-                        <label for="selected_input" class="block text-sm font-medium text-gray-700 mb-1">Seleccione un Input:</label>
-                        <select name="selected_input" id="selected_input" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                            <option value="">-- Input --</option>
-                            {% for input_col in analysis_config.input_columns %}
-                            <option value="{{ input_col }}" {% if selected_input == input_col %}selected{% endif %}>{{ input_col }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <label for="selected_output" class="block text-sm font-medium text-gray-700 mb-1">Seleccione un Output (original):</label>
-                        <select name="selected_output" id="selected_output" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                             <option value="">-- Output --</option>
-                            {% for output_col in analysis_config.output_columns %} {# Show original output column names for selection #}
-                            <option value="{{ output_col }}" {% if selected_output == output_col %}selected{% endif %}>{{ output_col }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <button type="submit" id="generate-graph-button" class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
-                    Generar Gráfica
-                </button>
-            </form>
-            <div id="graph-loader" class="loader" style="display: none;"></div>
-        </div>
-
-        {% if graph_html %}
-        <div id="graph-container" class="mt-8 p-1 md:p-6 bg-gray-50 rounded-lg shadow-md">
-            <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">Frontera de Eficiencia: {{ selected_output }} vs. {{ selected_input }}</h3>
-            <div class="plotly-graph-div rounded-lg overflow-hidden border border-gray-200 bg-white">
-                {{ graph_html | safe }}
-            </div>
-            <div class="mt-4 text-center">
-                 <p class="text-xs text-gray-500">La imagen de esta gráfica se incluirá automáticamente en el reporte PDF si se descarga después de generar la gráfica.</p>
-            </div>
-        </div>
-        {% endif %}
-
-        {% else %}
-            <p class="text-center text-gray-600 py-10">No hay configuración de análisis disponible. Por favor, <a href="{{ url_for('index') }}" class="text-blue-600 hover:underline">realice un análisis</a> primero.</p>
-        {% endif %}
+{% block content %}
+{% if analysis_config %}
+<!-- Header -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+    <div>
+        <h1 class="font-display text-2xl md:text-3xl font-bold text-[var(--color-text)] mb-1">Gráficas de Frontera</h1>
+        <p class="text-sm text-[var(--color-text-secondary)]">Visualice la frontera de eficiencia en 2D.</p>
     </div>
+    <div class="flex flex-wrap gap-2 mt-3 sm:mt-0">
+        <a href="{{ url_for('show_results') }}" class="btn-secondary text-sm">Volver a Resultados</a>
+        <a href="{{ url_for('clear_session_route') }}" class="btn-danger text-sm">Nuevo Análisis</a>
+    </div>
+</div>
 
-    <footer class="text-center text-sm text-gray-500 mt-8">
-        CHAMPIONSYS &copy; {{ current_year }}
-    </footer>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const graphForm = document.getElementById('graph-form');
-            const generateGraphButton = document.getElementById('generate-graph-button');
-            const graphLoader = document.getElementById('graph-loader');
+<!-- Variable Selector -->
+<div class="card-glass p-6 mb-8 animate-fade-in">
+    <h2 class="font-display text-lg font-semibold text-[var(--color-text)] mb-4">Seleccionar Variables</h2>
+    <p class="text-sm text-[var(--color-text-secondary)] mb-4">
+        Elija un input y un output para visualizar la frontera de eficiencia en 2D.
+    </p>
+    <form method="POST" action="{{ url_for('show_graphs') }}" id="graph-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <div>
+                <label for="selected_input" class="block text-sm font-medium text-[var(--color-text)] mb-2">Input:</label>
+                <select name="selected_input" id="selected_input" required class="select-glass">
+                    <option value="">-- Seleccione un Input --</option>
+                    {% for input_col in analysis_config.input_columns %}
+                    <option value="{{ input_col }}" {% if selected_input == input_col %}selected{% endif %}>{{ input_col }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="selected_output" class="block text-sm font-medium text-[var(--color-text)] mb-2">Output:</label>
+                <select name="selected_output" id="selected_output" required class="select-glass">
+                    <option value="">-- Seleccione un Output --</option>
+                    {% for output_col in analysis_config.output_columns %}
+                    <option value="{{ output_col }}" {% if selected_output == output_col %}selected{% endif %}>{{ output_col }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <button type="submit" id="generate-graph-button" class="btn-primary">
+            Generar Gráfica
+        </button>
+    </form>
+    <div id="graph-loader" class="loader" style="display: none;"></div>
+</div>
 
-            if (graphForm) {
-                graphForm.addEventListener('submit', function() {
-                    const selectedInput = document.getElementById('selected_input').value;
-                    const selectedOutput = document.getElementById('selected_output').value;
+<!-- Graph Container -->
+{% if graph_html %}
+<div id="graph-container" class="card-glass p-4 md:p-6 animate-fade-in">
+    <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-4 text-center">
+        {{ selected_output }} vs. {{ selected_input }}
+    </h3>
+    <div class="rounded-xl overflow-hidden border border-[var(--color-surface-border)] bg-white">
+        {{ graph_html | safe }}
+    </div>
+    <p class="text-xs text-[var(--color-text-muted)] text-center mt-4">
+        La imagen de esta gráfica se incluirá automáticamente en el reporte PDF.
+    </p>
+</div>
+{% else %}
+<!-- Empty State -->
+<div class="card-glass p-12 text-center animate-fade-in">
+    <svg class="w-16 h-16 mx-auto text-indigo-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+    </svg>
+    <p class="text-[var(--color-text-secondary)] text-lg mb-2">Seleccione variables para graficar</p>
+    <p class="text-sm text-[var(--color-text-muted)]">Elija un input y un output arriba para generar la gráfica de frontera.</p>
+</div>
+{% endif %}
 
-                    if (!selectedInput || !selectedOutput) {
-                        alert('Por favor, seleccione un input y un output.');
-                        event.preventDefault(); // Prevent form submission
-                        return;
-                    }
+{% else %}
+<!-- No Analysis Config -->
+<div class="card-glass p-12 text-center animate-fade-in">
+    <svg class="w-16 h-16 mx-auto text-[var(--color-text-muted)] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+    </svg>
+    <p class="text-[var(--color-text-secondary)] text-lg mb-4">No hay configuración de análisis disponible.</p>
+    <a href="{{ url_for('index') }}" class="btn-primary inline-block">Realizar un Análisis</a>
+</div>
+{% endif %}
+{% endblock %}
 
-                    if (generateGraphButton) {
-                        generateGraphButton.disabled = true;
-                        generateGraphButton.textContent = 'Generando...';
-                    }
-                    if (graphLoader) {
-                        graphLoader.style.display = 'block';
-                    }
-                });
-            }
-        });
-    </script>
-</body>
-</html>
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const graphForm = document.getElementById('graph-form');
+        const generateGraphButton = document.getElementById('generate-graph-button');
+        const graphLoader = document.getElementById('graph-loader');
+
+        if (graphForm) {
+            graphForm.addEventListener('submit', function() {
+                const selectedInput = document.getElementById('selected_input').value;
+                const selectedOutput = document.getElementById('selected_output').value;
+
+                if (!selectedInput || !selectedOutput) {
+                    alert('Por favor, seleccione un input y un output.');
+                    event.preventDefault();
+                    return;
+                }
+
+                if (generateGraphButton) {
+                    generateGraphButton.disabled = true;
+                    generateGraphButton.textContent = 'Generando...';
+                }
+                if (graphLoader) {
+                    graphLoader.style.display = 'block';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

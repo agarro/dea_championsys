@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+{% block title %}Simulador What-If — DEA ChampionSys{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Hero -->
+    <div class="hero-bento mb-8">
+        <div class="card-kpi animate-fade-in">
+            <h1 class="font-display text-2xl md:text-3xl font-bold text-[var(--color-text)]">Simulador What-If</h1>
+            <p class="text-[var(--color-text-secondary)] mt-2 text-sm">Explora escenarios para alcanzar la frontera de eficiencia</p>
+        </div>
+    </div>
+
+    <!-- DMU Info Card -->
+    <div class="card-glass p-6 rounded-2xl mb-8 animate-fade-in">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+            <h2 class="font-display text-xl font-semibold text-[var(--color-text)]">DMU: {{ dmu_name }}</h2>
+            <a href="{{ url_for('show_results') }}" class="btn-secondary text-sm mt-2 sm:mt-0">Volver a Resultados</a>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="card-kpi p-4 rounded-xl">
+                <span class="text-sm text-[var(--color-text-muted)]">Eficiencia Actual</span>
+                <span class="text-2xl font-bold text-[var(--color-primary)]">{{ "%.4f" | format(current_score) }}</span>
+            </div>
+            <div class="card-kpi p-4 rounded-xl">
+                <span class="text-sm text-[var(--color-text-muted)]">Orientación</span>
+                <span class="text-2xl font-bold text-[var(--color-text)]">{{ orientation | capitalize }}</span>
+            </div>
+            <div class="card-kpi p-4 rounded-xl">
+                <span class="text-sm text-[var(--color-text-muted)]">Grupo de Peers</span>
+                <span class="text-2xl font-bold text-[var(--color-success)]">{{ peer_group | length }} DMUs</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variable Sliders -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Input Variables -->
+        <div class="card-glass p-6 rounded-2xl animate-fade-in">
+            <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-4">Variables de Entrada</h3>
+            {% if input_variables %}
+            {% for var in input_variables %}
+            <div class="mb-5 pb-4 {% if not loop.last %}border-b border-[var(--color-surface-border)]{% endif %}">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-sm font-medium text-[var(--color-text)]">{{ var.name }}</label>
+                    <span class="text-xs text-[var(--color-text-muted)] font-mono">{{ "%.4f" | format(var.current) }}</span>
+                </div>
+                <input type="range"
+                       class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[var(--color-primary)]"
+                       min="{{ var.min }}" max="{{ var.max }}" step="{{ var.step }}"
+                       value="{{ var.current }}"
+                       id="slider-input-{{ loop.index0 }}"
+                       data-var="{{ var.name }}" data-type="input"
+                       oninput="onSliderChange(this)">
+                <div class="flex justify-between items-center mt-2">
+                    <span class="text-xs text-[var(--color-text-muted)]">Mín: {{ "%.2f" | format(var.min) }}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-[var(--color-text-muted)]">Meta:</span>
+                        <input type="number"
+                               class="input-glass text-center text-xs w-24 py-1"
+                               value="{{ var.current }}"
+                               id="target-input-{{ loop.index0 }}"
+                               data-target="{{ var.name }}" data-type="input"
+                               oninput="onTargetChange(this)">
+                    </div>
+                    <span class="text-xs text-[var(--color-text-muted)]">Máx: {{ "%.2f" | format(var.max) }}</span>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="text-sm text-[var(--color-text-muted)]">No hay variables de entrada configuradas.</p>
+            {% endif %}
+        </div>
+
+        <!-- Output Variables -->
+        <div class="card-glass p-6 rounded-2xl animate-fade-in">
+            <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-4">Variables de Salida</h3>
+            {% if output_variables %}
+            {% for var in output_variables %}
+            <div class="mb-5 pb-4 {% if not loop.last %}border-b border-[var(--color-surface-border)]{% endif %}">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-sm font-medium text-[var(--color-text)]">{{ var.name }}</label>
+                    <span class="text-xs text-[var(--color-text-muted)] font-mono">{{ "%.4f" | format(var.current) }}</span>
+                </div>
+                <input type="range"
+                       class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[var(--color-success)]"
+                       min="{{ var.min }}" max="{{ var.max }}" step="{{ var.step }}"
+                       value="{{ var.current }}"
+                       id="slider-output-{{ loop.index0 }}"
+                       data-var="{{ var.name }}" data-type="output"
+                       oninput="onSliderChange(this)">
+                <div class="flex justify-between items-center mt-2">
+                    <span class="text-xs text-[var(--color-text-muted)]">Mín: {{ "%.2f" | format(var.min) }}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-[var(--color-text-muted)]">Meta:</span>
+                        <input type="number"
+                               class="input-glass text-center text-xs w-24 py-1"
+                               value="{{ var.current }}"
+                               id="target-output-{{ loop.index0 }}"
+                               data-target="{{ var.name }}" data-type="output"
+                               oninput="onTargetChange(this)">
+                    </div>
+                    <span class="text-xs text-[var(--color-text-muted)]">Máx: {{ "%.2f" | format(var.max) }}</span>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="text-sm text-[var(--color-text-muted)]">No hay variables de salida configuradas.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Constraint Notice -->
+    <div class="card-glass p-4 rounded-xl mb-6 flex items-start gap-3 animate-fade-in">
+        <svg class="w-5 h-5 text-[var(--color-warning)] mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+        </svg>
+        <div>
+            <p class="text-sm font-medium text-[var(--color-text)]">Restricción de Ajuste</p>
+            <p class="text-xs text-[var(--color-text-secondary)] mt-1">El motor de simulación limita cada paso a un máximo del 15% de ajuste por período para garantizar viabilidad operativa.</p>
+        </div>
+    </div>
+
+    <!-- Simulate Button -->
+    <div class="text-center mb-8">
+        <button id="simulate-button" class="btn-primary px-8 py-3 text-lg" onclick="runSimulation()">
+            Simular Cambios
+        </button>
+        <div id="simulate-loader" class="loader hidden mt-4"></div>
+    </div>
+
+    <!-- Results (hidden initially) -->
+    <div id="simulation-results" class="hidden space-y-6">
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fade-in">
+            <div class="card-kpi p-5 rounded-xl text-center">
+                <div class="kpi-label">Score Proyectado</div>
+                <div id="result-projected" class="kpi-value text-3xl text-[var(--color-primary)]">—</div>
+            </div>
+            <div class="card-kpi p-5 rounded-xl text-center">
+                <div class="kpi-label">Ganancia</div>
+                <div id="result-gain" class="kpi-value text-3xl text-[var(--color-success)]">—</div>
+            </div>
+            <div class="card-kpi p-5 rounded-xl text-center">
+                <div class="kpi-label">Nuevo Grupo de Peers</div>
+                <div id="result-peers" class="kpi-value text-lg text-[var(--color-text)]">—</div>
+            </div>
+        </div>
+
+        <!-- Path to Frontier -->
+        <div class="card-glass p-6 rounded-2xl animate-fade-in">
+            <h3 class="font-display text-lg font-semibold text-[var(--color-text)] mb-4">Camino a la Frontera</h3>
+            <div id="path-steps" class="space-y-3">
+                <!-- Steps will be rendered here by JS -->
+            </div>
+        </div>
+
+        <!-- Violations (if any) -->
+        <div id="violations-panel" class="hidden card-glass p-6 rounded-2xl border-l-4 border-[var(--color-error)] animate-fade-in">
+            <h3 class="font-display text-lg font-semibold text-[var(--color-error)] mb-2">Violaciones de Restricciones</h3>
+            <ul id="violations-list" class="list-disc list-inside text-sm text-[var(--color-text-secondary)]"></ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Sync slider ↔ target input
+function onSliderChange(slider) {
+    const varName = slider.dataset.var;
+    const type = slider.dataset.type;
+    const targetInput = document.querySelector(`input[data-target="${varName}"]`);
+    if (targetInput) targetInput.value = parseFloat(slider.value).toFixed(4);
+}
+
+function onTargetChange(input) {
+    const varName = input.dataset.target;
+    const type = input.dataset.type;
+    const slider = document.getElementById(`slider-${type}-${getSliderIndex(varName, type)}`);
+    if (slider) {
+        const val = parseFloat(input.value);
+        if (!isNaN(val) && val >= parseFloat(slider.min) && val <= parseFloat(slider.max)) {
+            slider.value = val;
+        }
+    }
+}
+
+function getSliderIndex(varName, type) {
+    const sliders = document.querySelectorAll(`input[data-var][data-type="${type}"]`);
+    for (let i = 0; i < sliders.length; i++) {
+        if (sliders[i].dataset.var === varName) return i;
+    }
+    return 0;
+}
+
+function collectTargets() {
+    const targets = {};
+    document.querySelectorAll('input[data-target]').forEach(input => {
+        const val = parseFloat(input.value);
+        if (!isNaN(val)) {
+            targets[input.dataset.target] = val;
+        }
+    });
+    return targets;
+}
+
+async function runSimulation() {
+    const btn = document.getElementById('simulate-button');
+    const loader = document.getElementById('simulate-loader');
+    const resultsDiv = document.getElementById('simulation-results');
+
+    btn.disabled = true;
+    btn.textContent = 'Simulando...';
+    loader.classList.remove('hidden');
+    resultsDiv.classList.add('hidden');
+
+    const targets = collectTargets();
+
+    try {
+        const response = await fetch('/api/simulate-what-if', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targets: targets })
+        });
+
+        const data = await response.json();
+
+        if (data.feasible) {
+            renderResults(data);
+        } else {
+            renderViolations(data.violations || ['Error desconocido']);
+        }
+    } catch (err) {
+        renderViolations(['Error de conexión: ' + err.message]);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Simular Cambios';
+        loader.classList.add('hidden');
+    }
+}
+
+function renderResults(data) {
+    const resultsDiv = document.getElementById('simulation-results');
+    const violationsPanel = document.getElementById('violations-panel');
+
+    // Projected score
+    document.getElementById('result-projected').textContent =
+        data.projected_score != null ? data.projected_score.toFixed(4) : '—';
+
+    // Gain
+    const gainEl = document.getElementById('result-gain');
+    if (data.gain_pct != null) {
+        gainEl.textContent = (data.gain_pct >= 0 ? '+' : '') + data.gain_pct.toFixed(2) + '%';
+        gainEl.className = 'kpi-value text-3xl ' +
+            (data.gain_pct >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]');
+    } else {
+        gainEl.textContent = '—';
+    }
+
+    // Peers
+    const peersEl = document.getElementById('result-peers');
+    if (data.new_peer_group && data.new_peer_group.length > 0) {
+        peersEl.textContent = data.new_peer_group.slice(0, 5).join(', ') +
+            (data.new_peer_group.length > 5 ? ` +${data.new_peer_group.length - 5} más` : '');
+    } else {
+        peersEl.textContent = 'Sin cambios';
+    }
+
+    // Path steps
+    const pathContainer = document.getElementById('path-steps');
+    pathContainer.innerHTML = '';
+    if (data.path_steps && data.path_steps.length > 0) {
+        data.path_steps.forEach(step => {
+            const stepEl = document.createElement('div');
+            stepEl.className = 'flex items-start gap-4 p-3 rounded-xl bg-[rgba(79,70,229,0.03)] border border-[var(--color-surface-border)]';
+            stepEl.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-sm font-bold shrink-0">
+                    ${step.step_number}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-[var(--color-text)]">${step.description}</p>
+                    <div class="flex flex-wrap gap-2 mt-1">
+                        ${Object.entries(step.adjustments || {}).map(([v, val]) =>
+                            `<span class="text-xs px-2 py-0.5 rounded-full ${val >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">${v}: ${val >= 0 ? '+' : ''}${val.toFixed(4)}</span>`
+                        ).join('')}
+                    </div>
+                    ${step.estimated_score != null ?
+                        `<p class="text-xs text-[var(--color-text-muted)] mt-1">Score estimado: ${step.estimated_score.toFixed(4)} (${step.cumulative_pct}% completado)</p>` : ''}
+                </div>
+            `;
+            pathContainer.appendChild(stepEl);
+        });
+    } else {
+        pathContainer.innerHTML = '<p class="text-sm text-[var(--color-text-muted)]">Ya estás en la frontera de eficiencia.</p>';
+    }
+
+    // Hide violations
+    violationsPanel.classList.add('hidden');
+
+    // Show results
+    resultsDiv.classList.remove('hidden');
+    resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderViolations(violations) {
+    const resultsDiv = document.getElementById('simulation-results');
+    const violationsPanel = document.getElementById('violations-panel');
+    const violationsList = document.getElementById('violations-list');
+
+    violationsList.innerHTML = violations.map(v => `<li>${v}</li>`).join('');
+    violationsPanel.classList.remove('hidden');
+    resultsDiv.classList.remove('hidden');
+    resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+{% endblock %}

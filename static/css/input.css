@@ -1,0 +1,422 @@
+@import "tailwindcss";
+
+/* Design Tokens - Glass Light */
+@theme {
+  --color-bg-gradient-start: #eef2ff;
+  --color-bg-gradient-end: #f0f9ff;
+  --color-surface: rgba(255, 255, 255, 0.55);
+  --color-surface-border: rgba(99, 102, 241, 0.15);
+  --color-surface-shadow: rgba(79, 70, 229, 0.08);
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-secondary: #06b6d4;
+  --color-success: #059669;
+  --color-warning: #f59e0b;
+  --color-error: #dc2626;
+  --color-text: #18181b;
+  --color-text-secondary: #52525b;
+  --color-text-muted: #a1a1aa;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+}
+
+/* Source paths - Tailwind scans these for classes */
+@source "../../templates/**/*.html";
+@source "../../static/js/**/*.js";
+
+/* ===== Glass Components ===== */
+
+.backdrop-glass {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .backdrop-glass {
+    background: rgba(255, 255, 255, 0.92);
+  }
+}
+
+.card-glass {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.08);
+}
+
+.shadow-glass {
+  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.08);
+}
+
+.shadow-glass-lg {
+  box-shadow: 0 12px 48px rgba(79, 70, 229, 0.12);
+}
+
+/* ===== Buttons ===== */
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  border-radius: 0.75rem;
+  transition: all 150ms ease-in-out;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+  transform: translateY(-1px);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1.5px solid rgba(99, 102, 241, 0.3);
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  border-radius: 0.75rem;
+  transition: all 150ms ease-in-out;
+}
+.btn-secondary:hover {
+  background: rgba(79, 70, 229, 0.06);
+  border-color: var(--color-primary);
+}
+
+.btn-danger {
+  background: var(--color-error);
+  color: white;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  transition: all 150ms ease-in-out;
+}
+.btn-danger:hover {
+  background: #b91c1c;
+}
+
+/* ===== Inputs ===== */
+
+.input-glass {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1.5px solid rgba(99, 102, 241, 0.2);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  transition: all 150ms ease-in-out;
+}
+.input-glass:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.select-glass {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1.5px solid rgba(99, 102, 241, 0.2);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  transition: all 150ms ease-in-out;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+.select-glass:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* ===== Checkbox Pills ===== */
+
+.pill-checkbox {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(99, 102, 241, 0.25);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: all 150ms ease-in-out;
+  user-select: none;
+}
+.pill-checkbox:hover {
+  border-color: var(--color-primary);
+  background: rgba(79, 70, 229, 0.06);
+}
+.pill-checkbox.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+.pill-checkbox input {
+  display: none;
+}
+
+/* ===== Tabs ===== */
+
+.tab-button {
+  padding: 0.75rem 1.5rem;
+  margin-bottom: -1px;
+  margin-right: 0.25rem;
+  border: 1.5px solid transparent;
+  border-bottom: none;
+  border-radius: 0.75rem 0.75rem 0 0;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  background: transparent;
+  transition: all 150ms ease-in-out;
+  cursor: pointer;
+}
+.tab-button:hover:not(.active) {
+  color: var(--color-text);
+  background: rgba(79, 70, 229, 0.04);
+}
+.tab-button.active {
+  color: var(--color-primary);
+  background: white;
+  border-color: var(--color-surface-border);
+  border-bottom-color: white;
+  font-weight: 600;
+}
+
+.tab-content {
+  display: none;
+  padding: 1.5rem;
+  background: white;
+  border: 1.5px solid var(--color-surface-border);
+  border-radius: 0 0.75rem 0.75rem 0.75rem;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.06);
+}
+.tab-content.active {
+  display: block;
+}
+
+/* ===== Tables (pandas .to_html) ===== */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.table th {
+  background: rgba(79, 70, 229, 0.06);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(8px);
+  z-index: 1;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+.table td {
+  padding: 0.5rem 0.875rem;
+  border-bottom: 1px solid #e4e4e7;
+  font-size: 0.8125rem;
+}
+.table-striped tr:nth-child(even) {
+  background: rgba(79, 70, 229, 0.03);
+}
+.table-hover tr:hover {
+  background: rgba(79, 70, 229, 0.06);
+}
+
+/* ===== Table Container ===== */
+
+.table-container {
+  max-height: 500px;
+  overflow-y: auto;
+  margin-bottom: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-surface-border);
+}
+
+.table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.table-container::-webkit-scrollbar-track {
+  background: rgba(79, 70, 229, 0.03);
+  border-radius: 10px;
+}
+.table-container::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.25);
+  border-radius: 10px;
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.4);
+}
+
+/* ===== Tooltip ===== */
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 240px;
+  background-color: #27272a;
+  color: #fff;
+  text-align: left;
+  border-radius: 8px;
+  padding: 8px 12px;
+  position: absolute;
+  z-index: 50;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -120px;
+  opacity: 0;
+  transition: opacity 200ms ease-in-out;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+.tooltip .tooltiptext::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #27272a transparent transparent transparent;
+}
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ===== Loader ===== */
+
+.loader {
+  border: 4px solid rgba(79, 70, 229, 0.1);
+  border-top: 4px solid var(--color-primary);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  animation: spin 0.8s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===== Flash Messages ===== */
+
+.flash-glass {
+  border-radius: 0.75rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.flash-error {
+  background: rgba(254, 226, 226, 0.8);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: #991b1b;
+}
+.flash-success {
+  background: rgba(209, 250, 229, 0.8);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: #065f46;
+}
+.flash-info {
+  background: rgba(199, 210, 254, 0.8);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  color: #3730a3;
+}
+
+/* ===== KPI Cards ===== */
+
+.card-kpi {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.08);
+}
+.card-kpi .kpi-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.card-kpi .kpi-value {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+/* ===== Hero Section ===== */
+
+.hero-bento {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+/* ===== Plotly Overrides ===== */
+
+.plotly-graph-div {
+  min-height: 500px;
+  width: 100%;
+}
+
+/* ===== Animations ===== */
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 300ms ease-out;
+}
+
+/* ===== Accessibility ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 640px) {
+  .hero-bento {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tab-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+}

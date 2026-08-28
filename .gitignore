@@ -31,3 +31,12 @@ build/
 
 # Workspace settings
 *.code-workspace
+
+# Node / Tailwind build
+node_modules/
+static/dist/
+
+# Logs and temporary files
+*.log
+cookies*.txt
+snip
